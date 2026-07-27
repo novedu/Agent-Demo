@@ -1,54 +1,40 @@
-import type { Message, MessageRole, AgentEvent, LLMMessage, ToolResult, TraceStep, AgentTrace, ToolCall } from './types';
+import type { ChatMessage, LLMResponse, Message, ToolCall, ToolResult, TraceStep, AgentTrace } from './types';
 import { EventEmitter } from './event';
 import { ConversationManager } from './conversation';
-import { ToolExecutor, ToolNotFoundError, ToolTimeoutError, ToolArgumentError } from './executor';
+import { ToolExecutor } from './executor';
+import type { LLMProvider } from './src/llm';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-export interface MockLLMConfig {
-  responses: LLMMessage[];
-}
-
-export class MockLLM {
-  private queue: LLMMessage[];
-  private index = 0;
-
-  constructor(config: MockLLMConfig) {
-    this.queue = config.responses;
-  }
-
-  async chat(_history: Message[]): Promise<LLMMessage> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    if (this.index >= this.queue.length) {
-      return { content: 'No more responses.', done: true };
-    }
-    return this.queue[this.index++];
-  }
+function generateToolCallId(): string {
+  return `call_${generateId()}`;
 }
 
 export interface AgentConfig {
-  llm: MockLLM;
+  llmProvider: LLMProvider;
   executor: ToolExecutor;
   conversationManager: ConversationManager;
   eventEmitter: EventEmitter;
+  systemPrompt?: string;
   maxSteps?: number;
 }
 
 export class Agent {
-  private llm: MockLLM;
+  private llmProvider: LLMProvider;
   private executor: ToolExecutor;
   private conversationManager: ConversationManager;
   private eventEmitter: EventEmitter;
+  private systemPrompt?: string;
   private maxSteps: number;
 
   constructor(config: AgentConfig) {
-    this.llm = config.llm;
+    this.llmProvider = config.llmProvider;
     this.executor = config.executor;
     this.conversationManager = config.conversationManager;
     this.eventEmitter = config.eventEmitter;
+    this.systemPrompt = config.systemPrompt;
     this.maxSteps = config.maxSteps || 10;
   }
 
@@ -68,6 +54,8 @@ export class Agent {
 
     for (let step = 1; step <= this.maxSteps; step++) {
       const messages = this.conversationManager.getMessages(conversation.id);
+      const llmMessages = this.buildLLMMessages(messages);
+      const toolDefinitions = this.executor.getToolDefinitions();
 
       this.eventEmitter.emit({
         type: 'llm_start',
@@ -75,6 +63,9 @@ export class Agent {
         conversationId: conversation.id,
         messageId: userMessage.id,
         input: userInput,
+        provider: this.llmProvider.name,
+        messages: llmMessages,
+        tools: toolDefinitions,
       });
 
       const stepStartTime = Date.now();
@@ -84,19 +75,33 @@ export class Agent {
         type: 'llm',
         status: 'running',
         llmInput: userInput,
+        llmMessages,
         duration: 0,
       };
 
-      let llmResponse: LLMMessage;
+      let llmResponse: LLMResponse;
       try {
-        llmResponse = await this.llm.chat(messages);
+        llmResponse = await this.llmProvider.chat(llmMessages, toolDefinitions);
         traceStep.llmResponse = llmResponse.content;
         traceStep.status = 'success';
       } catch (err) {
         traceStep.status = 'error';
         traceStep.error = (err as Error).message;
+        traceStep.duration = Date.now() - stepStartTime;
+        traceSteps.push(traceStep);
         success = false;
         error = (err as Error).message;
+
+        this.eventEmitter.emit({
+          type: 'llm_error',
+          timestamp: Date.now(),
+          conversationId: conversation.id,
+          messageId: userMessage.id,
+          provider: this.llmProvider.name,
+          error: {
+            message: error,
+          },
+        });
         break;
       }
 
@@ -107,12 +112,14 @@ export class Agent {
         messageId: userMessage.id,
         response: {
           content: llmResponse.content,
-          toolCall: llmResponse.tool_call,
+          toolCalls: llmResponse.toolCalls,
           done: !!llmResponse.done,
         },
       });
 
-      if (llmResponse.done) {
+      const toolCalls = this.normalizeToolCalls(llmResponse.toolCalls);
+
+      if (toolCalls.length === 0) {
         this.conversationManager.addMessage(conversation.id, {
           role: 'assistant',
           content: llmResponse.content,
@@ -123,8 +130,15 @@ export class Agent {
         break;
       }
 
-      if (llmResponse.tool_call) {
-        const { name: toolName, args } = llmResponse.tool_call;
+      this.conversationManager.addMessage(conversation.id, {
+        role: 'assistant',
+        content: llmResponse.content,
+        status: 'success',
+        toolCalls,
+      });
+
+      for (const toolCall of toolCalls) {
+        const { id: toolCallId, name: toolName, args } = toolCall;
 
         this.eventEmitter.emit({
           type: 'tool_start',
@@ -163,16 +177,10 @@ export class Agent {
           toolTraceStep.status = 'success';
 
           this.conversationManager.addMessage(conversation.id, {
-            role: 'assistant',
-            content: llmResponse.content,
-            status: 'success',
-            toolCall: { name: toolName, args },
-          });
-
-          this.conversationManager.addMessage(conversation.id, {
             role: 'tool',
             content: typeof toolResult.data === 'string' ? toolResult.data : JSON.stringify(toolResult.data),
             status: 'success',
+            toolCallId,
             toolResult,
           });
 
@@ -193,34 +201,20 @@ export class Agent {
           toolTraceStep.error = toolResult.error;
 
           this.conversationManager.addMessage(conversation.id, {
-            role: 'assistant',
-            content: llmResponse.content,
-            status: 'success',
-            toolCall: { name: toolName, args },
-          });
-
-          this.conversationManager.addMessage(conversation.id, {
             role: 'tool',
             content: toolResult.error!,
             status: 'error',
+            toolCallId,
             toolResult,
           });
         }
 
         traceSteps.push(toolTraceStep);
-        traceStep.duration = Date.now() - stepStartTime;
-        traceSteps.push(traceStep);
-        continue;
       }
-
-      this.conversationManager.addMessage(conversation.id, {
-        role: 'assistant',
-        content: llmResponse.content,
-        status: 'success',
-      });
 
       traceStep.duration = Date.now() - stepStartTime;
       traceSteps.push(traceStep);
+      continue;
     }
 
     const totalDuration = Date.now() - startTime;
@@ -269,5 +263,32 @@ export class Agent {
       retrievalDuration: typeof data.retrievalDuration === 'number' ? data.retrievalDuration : 0,
       documentCount: typeof data.documentCount === 'number' ? data.documentCount : 0,
     };
+  }
+
+  private normalizeToolCalls(toolCalls?: ToolCall[]): ToolCall[] {
+    return (toolCalls ?? []).map(toolCall => ({
+      ...toolCall,
+      id: toolCall.id || generateToolCallId(),
+    }));
+  }
+
+  private buildLLMMessages(messages: Message[]): ChatMessage[] {
+    const chatMessages = messages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      toolCalls: message.toolCalls,
+      toolCallId: message.toolCallId,
+      createdAt: message.createdAt,
+    }));
+
+    if (!this.systemPrompt) {
+      return chatMessages;
+    }
+
+    return [
+      { id: 'system', role: 'system', content: this.systemPrompt, createdAt: Date.now() },
+      ...chatMessages,
+    ];
   }
 }

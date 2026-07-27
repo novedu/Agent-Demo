@@ -1,4 +1,4 @@
-import type { ToolArgs, ArgsSchema, ToolResult } from './types';
+import type { ToolArgs, ArgsSchema, ToolResult, ToolDefinition } from './types';
 import { ToolRegistry } from './registry';
 
 export class ToolNotFoundError extends Error {
@@ -24,6 +24,10 @@ export class ToolArgumentError extends Error {
 
 export class ToolExecutor {
   constructor(private registry: ToolRegistry) {}
+
+  getToolDefinitions(): ToolDefinition[] {
+    return this.registry.getToolDefinitions();
+  }
 
   async run(name: string, args: ToolArgs, timeoutMs = 2000): Promise<ToolResult> {
     const startedAt = Date.now();

@@ -1,11 +1,16 @@
 import { ToolRegistry } from './registry';
 import { ToolExecutor } from './executor';
-import { Agent, MockLLM } from './agent';
+import { Agent } from './agent';
 import { EventEmitter } from './event';
 import { ConversationManager } from './conversation';
 import { registerTools } from './tools';
-import type { AgentEvent, LLMMessage } from './types';
 import { ContextBuilder, KnowledgeBase, Retriever } from './src/knowledge';
+import { MockLLMProvider, OpenAIProvider } from './src/llm';
+import type { AgentTrace, LLMResponse } from './types';
+
+declare const process: {
+  env: Record<string, string | undefined>;
+};
 
 async function main() {
   const knowledgeBase = new KnowledgeBase();
@@ -41,14 +46,14 @@ async function main() {
   const eventEmitter = new EventEmitter();
 
   eventEmitter.on('llm_start', (event) => {
-    const e = event as { conversationId: string };
-    console.log(`\n📝 [llm_start] conversation=${e.conversationId.slice(0, 8)}`);
+    const e = event as { conversationId: string; provider: string; messages: unknown[]; tools: unknown[] };
+    console.log(`\n📝 [llm_start] provider=${e.provider} conversation=${e.conversationId.slice(0, 8)} messages=${e.messages.length} tools=${e.tools.length}`);
   });
 
   eventEmitter.on('llm_response', (event) => {
-    const e = event as { response: { content: string; toolCall?: { name: string } } };
-    const callInfo = e.response.toolCall
-      ? ` → 调用工具: ${e.response.toolCall.name}`
+    const e = event as { response: { content: string; toolCalls?: Array<{ id: string; name: string }> } };
+    const callInfo = e.response.toolCalls && e.response.toolCalls.length > 0
+      ? ` → 调用工具: ${e.response.toolCalls.map(toolCall => `${toolCall.name}(${toolCall.id})`).join(', ')}`
       : '';
     console.log(`💬 [llm_response] ${e.response.content}${callInfo}`);
   });
@@ -75,38 +80,76 @@ async function main() {
     console.log(`❌ [tool_error] ${e.toolName}: ${e.error.type} - ${e.error.message}`);
   });
 
+  eventEmitter.on('llm_error', (event) => {
+    const e = event as { provider: string; error: { message: string } };
+    console.log(`❌ [llm_error] provider=${e.provider}: ${e.error.message}`);
+  });
+
   eventEmitter.on('agent_finish', (event) => {
     const e = event as { taskId: string; totalSteps: number; duration: number; success: boolean };
     console.log(`\n🏁 [agent_finish] task=${e.taskId.slice(0, 8)} steps=${e.totalSteps} duration=${e.duration}ms success=${e.success}`);
   });
 
-  const mockLLM = new MockLLM({
-    responses: [
-      {
-        content: '我需要先检索公司制度知识库，再基于检索上下文回答。',
-        tool_call: { name: 'searchKnowledge', args: { query: '公司的年假政策是什么', limit: 3 } },
-      },
-      {
-        content: '根据知识库，公司年假政策是：员工入职满一年后可享受 5 天带薪年假，满三年后为 10 天，满五年后为 15 天。申请年假需要提前 3 个工作日在系统中提交，并由直属主管审批。',
-        done: true,
-      },
-    ],
-  });
+  const mockResponses: LLMResponse[] = [
+    {
+      content: '我需要调用天气工具查询北京天气。',
+      toolCalls: [
+        { id: 'call_weather_001', name: 'getWeather', args: { city: '北京' } },
+      ],
+    },
+    {
+      content: '北京今天晴，气温 28°C，湿度 45%。',
+      done: true,
+    },
+    {
+      content: '我先查询华东 2024-02 的销售数据。',
+      toolCalls: [
+        { id: 'call_sales_001', name: 'querySalesData', args: { region: '华东', month: '2024-02' } },
+      ],
+    },
+    {
+      content: '销售数据已返回，我继续计算与 2024-01 相比的增长率。',
+      toolCalls: [
+        { id: 'call_metric_001', name: 'calculateMetrics', args: { current: 980000, previous: 1250000, metric: 'growth' } },
+      ],
+    },
+    {
+      content: '华东 2024-02 营收为 ¥980000，对比 2024-01 的 ¥1250000，增长率为 -21.60%。',
+      done: true,
+    },
+  ];
+
+  const mockLLMProvider = new MockLLMProvider({ responses: mockResponses });
+
+  const realLLMProvider = process.env.OPENAI_API_KEY
+    ? new OpenAIProvider({
+        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: process.env.OPENAI_BASE_URL,
+        model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+      })
+    : undefined;
+
+  const llmProvider = realLLMProvider ?? mockLLMProvider;
 
   const agent = new Agent({
-    llm: mockLLM,
+    llmProvider,
     executor,
     conversationManager,
     eventEmitter,
+    systemPrompt: '你是一个企业 AI 助手。需要使用工具时先调用工具，拿到结果后再给用户清晰回答。',
     maxSteps: 20,
   });
 
   console.log('📦 已注册工具:');
   console.log(registry.describe());
+  console.log(`\n🤖 当前 LLM Provider: ${llmProvider.name}`);
 
-  const trace = await agent.run('公司的年假政策是什么');
+  const traces: AgentTrace[] = [];
+  traces.push(await agent.run('查询北京天气'));
+  traces.push(await agent.run('查询销售数据并计算增长率'));
 
-  console.log('\n📊 Agent Trace:');
+  const trace = traces[traces.length - 1];
+  console.log('\n📊 最后一次 Agent Trace:');
   console.log(`  taskId: ${trace.taskId}`);
   console.log(`  conversationId: ${trace.conversationId}`);
   console.log(`  totalSteps: ${trace.steps.length}`);

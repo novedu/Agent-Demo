@@ -1,4 +1,4 @@
-import type { Tool, ArgsSchema } from './types';
+import type { Tool, ToolDefinition } from './types';
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
@@ -20,6 +20,37 @@ export class ToolRegistry {
 
   list(): Tool[] {
     return Array.from(this.tools.values());
+  }
+
+  getToolDefinitions(): ToolDefinition[] {
+    return this.list().map(tool => {
+      const properties: ToolDefinition['function']['parameters']['properties'] = {};
+      const required: string[] = [];
+
+      for (const [name, field] of Object.entries(tool.argsSchema ?? {})) {
+        properties[name] = {
+          type: field.type,
+          ...(field.description ? { description: field.description } : {}),
+        };
+
+        if (field.required) {
+          required.push(name);
+        }
+      }
+
+      return {
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: {
+            type: 'object',
+            properties,
+            required,
+          },
+        },
+      };
+    });
   }
 
   describe(): string {

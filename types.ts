@@ -1,9 +1,32 @@
-export type MessageRole = 'user' | 'assistant' | 'tool';
+export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 export type MessageStatus = 'pending' | 'streaming' | 'success' | 'error';
 
+export interface ChatMessage {
+  id: string;
+  role: MessageRole;
+  content: string;
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
+  createdAt: number;
+}
+
 export interface ToolCall {
+  id: string;
   name: string;
   args: Record<string, unknown>;
+}
+
+export interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: 'object';
+      properties: Record<string, { type: string; description?: string }>;
+      required: string[];
+    };
+  };
 }
 
 export interface ToolResult {
@@ -26,7 +49,8 @@ export interface Message {
   role: MessageRole;
   content: string;
   status: MessageStatus;
-  toolCall?: ToolCall;
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
   toolResult?: ToolResult;
   createdAt: number;
   updatedAt: number;
@@ -35,6 +59,7 @@ export interface Message {
 export type AgentEventType =
   | 'llm_start'
   | 'llm_response'
+  | 'llm_error'
   | 'tool_start'
   | 'tool_success'
   | 'tool_error'
@@ -49,6 +74,9 @@ export interface LlmStartEvent extends AgentEventBase<'llm_start'> {
   conversationId: string;
   messageId: string;
   input: string;
+  provider: string;
+  messages: ChatMessage[];
+  tools: ToolDefinition[];
 }
 
 export interface LlmResponseEvent extends AgentEventBase<'llm_response'> {
@@ -56,8 +84,17 @@ export interface LlmResponseEvent extends AgentEventBase<'llm_response'> {
   messageId: string;
   response: {
     content: string;
-    toolCall?: ToolCall;
+    toolCalls?: ToolCall[];
     done: boolean;
+  };
+}
+
+export interface LlmErrorEvent extends AgentEventBase<'llm_error'> {
+  conversationId: string;
+  messageId: string;
+  provider: string;
+  error: {
+    message: string;
   };
 }
 
@@ -96,6 +133,7 @@ export interface AgentFinishEvent extends AgentEventBase<'agent_finish'> {
 export type AgentEvent =
   | LlmStartEvent
   | LlmResponseEvent
+  | LlmErrorEvent
   | ToolStartEvent
   | ToolSuccessEvent
   | ToolErrorEvent
@@ -107,6 +145,7 @@ export interface TraceStep {
   type: 'llm' | 'tool';
   status: 'pending' | 'running' | 'success' | 'error';
   llmInput?: string;
+  llmMessages?: ChatMessage[];
   llmResponse?: string;
   toolName?: string;
   toolArgs?: Record<string, unknown>;
@@ -142,13 +181,11 @@ export interface Tool {
   execute: (args: ToolArgs) => Promise<ToolResult>;
 }
 
-export interface LLMMessage {
+export interface LLMResponse {
   content: string;
-  tool_call?: {
-    name: string;
-    args: ToolArgs;
-  };
+  toolCalls?: ToolCall[];
   done?: boolean;
+  raw?: unknown;
 }
 
 export interface Conversation {
