@@ -7,4 +7,5 @@ coverage/
 .DS_Store
 .env
 .env.*
+!.env.example   # 强制保留这个示例文件
 
