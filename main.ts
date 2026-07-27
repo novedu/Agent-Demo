@@ -5,10 +5,36 @@ import { EventEmitter } from './event';
 import { ConversationManager } from './conversation';
 import { registerTools } from './tools';
 import type { AgentEvent, LLMMessage } from './types';
+import { ContextBuilder, KnowledgeBase, Retriever } from './src/knowledge';
 
 async function main() {
+  const knowledgeBase = new KnowledgeBase();
+  knowledgeBase.addDocument({
+    id: 'HR001',
+    content: '公司年假政策：员工入职满一年后可享受 5 天带薪年假，满三年后为 10 天，满五年后为 15 天。年假需提前 3 个工作日在系统中提交申请，并由直属主管审批。',
+    metadata: { title: '公司年假政策', category: 'HR', updatedAt: '2024-01-15' },
+  });
+  knowledgeBase.addDocument({
+    id: 'HR002',
+    content: '病假政策：员工请病假需上传医院证明或就诊记录。连续病假超过 3 天时，HR 会进行复核。',
+    metadata: { title: '病假政策', category: 'HR', updatedAt: '2024-02-01' },
+  });
+  knowledgeBase.addDocument({
+    id: 'FIN001',
+    content: '差旅报销政策：员工需在出差结束后 7 个工作日内提交发票和行程单。超期提交需部门负责人补充说明。',
+    metadata: { title: '差旅报销政策', category: 'Finance', updatedAt: '2024-03-10' },
+  });
+  knowledgeBase.addDocument({
+    id: 'KB001',
+    content: '华东地区 Q1 通过组合营销实现营收增长 25%，渠道合伙人计划贡献明显。',
+    metadata: { title: 'Q1 销售策略复盘', category: 'Sales', updatedAt: '2024-04-20' },
+  });
+
+  const retriever = new Retriever(knowledgeBase);
+  const contextBuilder = new ContextBuilder();
+
   const registry = new ToolRegistry();
-  registerTools(registry);
+  registerTools(registry, { retriever, contextBuilder });
 
   const executor = new ToolExecutor(registry);
   const conversationManager = new ConversationManager();
@@ -34,7 +60,14 @@ async function main() {
 
   eventEmitter.on('tool_success', (event) => {
     const e = event as { toolName: string; result: { data?: unknown } };
-    console.log(`✅ [tool_success] ${e.toolName}: ${e.result.data}`);
+    const data = e.result.data;
+    if (e.toolName === 'searchKnowledge' && data && typeof data === 'object') {
+      const ragData = data as { documentCount?: number; retrievalDuration?: number; logs?: string[] };
+      console.log(`✅ [tool_success] ${e.toolName}: docs=${ragData.documentCount} retrieval=${ragData.retrievalDuration}ms`);
+      ragData.logs?.forEach(log => console.log(`   - ${log}`));
+      return;
+    }
+    console.log(`✅ [tool_success] ${e.toolName}: ${data}`);
   });
 
   eventEmitter.on('tool_error', (event) => {
@@ -50,61 +83,11 @@ async function main() {
   const mockLLM = new MockLLM({
     responses: [
       {
-        content: '好的，我先查一下华东 2024-01 的销售数据',
-        tool_call: { name: 'querySalesData', args: { region: '华东', month: '2024-01' } },
+        content: '我需要先检索公司制度知识库，再基于检索上下文回答。',
+        tool_call: { name: 'searchKnowledge', args: { query: '公司的年假政策是什么', limit: 3 } },
       },
       {
-        content: '让我先在知识库中检索"华东"相关文档',
-        tool_call: { name: 'searchKnowledge', args: { keyword: '华东', limit: 2 } },
-      },
-      {
-        content: '基于知识库的提示，再查一下华南 2024-01 的销售数据',
-        tool_call: { name: 'querySalesData', args: { region: '华南', month: '2024-01' } },
-      },
-      {
-        content: '我要对比华东 1 月和 2 月的营收增长率，先查 1 月数据',
-        tool_call: { name: 'querySalesData', args: { region: '华东', month: '2024-01' } },
-      },
-      {
-        content: '1 月数据拿到了，再查 2 月的',
-        tool_call: { name: 'querySalesData', args: { region: '华东', month: '2024-02' } },
-      },
-      {
-        content: '两个月数据都拿到了，计算增长率',
-        tool_call: {
-          name: 'calculateMetrics',
-          args: { current: 980000, previous: 1250000, metric: 'growth' },
-        },
-      },
-      {
-        content: '试试调用一个不存在的工具',
-        tool_call: { name: 'non_existent_tool', args: {} },
-      },
-      {
-        content: '测试参数校验：querySalesData 不传 month',
-        tool_call: { name: 'querySalesData', args: { region: '华东' } },
-      },
-      {
-        content: '测试参数校验：calculateMetrics 的 current 传字符串',
-        tool_call: {
-          name: 'calculateMetrics',
-          args: { current: '一百', previous: 100, metric: 'growth' },
-        },
-      },
-      {
-        content: '查一个不支持的区域的销售数据',
-        tool_call: { name: 'querySalesData', args: { region: '东北', month: '2024-01' } },
-      },
-      {
-        content: '调用一个会超时的工具',
-        tool_call: { name: 'slow_query', args: {} },
-      },
-      {
-        content: '查一下北京天气',
-        tool_call: { name: 'getWeather', args: { city: '北京' } },
-      },
-      {
-        content: '所有场景演示完毕，任务完成！',
+        content: '根据知识库，公司年假政策是：员工入职满一年后可享受 5 天带薪年假，满三年后为 10 天，满五年后为 15 天。申请年假需要提前 3 个工作日在系统中提交，并由直属主管审批。',
         done: true,
       },
     ],
@@ -121,7 +104,7 @@ async function main() {
   console.log('📦 已注册工具:');
   console.log(registry.describe());
 
-  const trace = await agent.run('请帮我演示一下 Agent 的各种工具调用场景');
+  const trace = await agent.run('公司的年假政策是什么');
 
   console.log('\n📊 Agent Trace:');
   console.log(`  taskId: ${trace.taskId}`);
@@ -143,6 +126,9 @@ async function main() {
       detail = step.llmResponse ? `响应: ${step.llmResponse.slice(0, 30)}...` : '无响应';
     } else {
       detail = step.toolName ? `${step.toolName} ${step.toolResult?.success ? '成功' : '失败'}` : '';
+      if (step.rag) {
+        detail += ` | query="${step.rag.query}" docs=${step.rag.documentCount} retrieval=${step.rag.retrievalDuration}ms`;
+      }
     }
     console.log(`  ${i + 1}. ${typeIcon} ${statusIcon} Step ${step.stepNumber}: ${detail} (${step.duration}ms)`);
   });

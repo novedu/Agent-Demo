@@ -14,6 +14,12 @@ export interface ToolResult {
   duration: number;
 }
 
+export interface RagTraceInfo {
+  query: string;
+  retrievalDuration: number;
+  documentCount: number;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -105,6 +111,7 @@ export interface TraceStep {
   toolName?: string;
   toolArgs?: Record<string, unknown>;
   toolResult?: ToolResult;
+  rag?: RagTraceInfo;
   error?: string;
   duration: number;
 }

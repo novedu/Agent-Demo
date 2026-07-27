@@ -1,11 +1,17 @@
 import type { ToolArgs, ToolResult } from './types';
 import { ToolRegistry } from './registry';
+import { ContextBuilder, Retriever } from './src/knowledge';
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function registerTools(registry: ToolRegistry): void {
+export interface RegisterToolsOptions {
+  retriever?: Retriever;
+  contextBuilder?: ContextBuilder;
+}
+
+export function registerTools(registry: ToolRegistry, options: RegisterToolsOptions = {}): void {
   registry.register({
     name: 'calculator',
     description: '执行简单数学计算，支持 add/sub/mul/div',
@@ -145,43 +151,77 @@ export function registerTools(registry: ToolRegistry): void {
     name: 'searchKnowledge',
     description: '在知识库中检索相关文档',
     argsSchema: {
-      keyword: { type: 'string', required: true, description: '搜索关键词' },
+      query: { type: 'string', required: false, description: '用户问题或搜索语句' },
+      keyword: { type: 'string', required: false, description: '兼容旧示例的搜索关键词' },
       limit: { type: 'number', required: false, description: '返回结果数量，默认 3' },
     },
     async execute(args) {
-      const { keyword, limit = 3 } = args as { keyword: string; limit?: number };
-      await delay(120);
+      const { query, keyword, limit = 3 } = args as { query?: string; keyword?: string; limit?: number };
+      const searchQuery = query || keyword;
+      const startedAt = Date.now();
 
-      const knowledgeBase = [
-        { id: 'KB001', title: 'Q1 销售策略复盘', content: '华东地区 Q1 通过组合营销实现营收增长 25%...' },
-        { id: 'KB002', title: '华南大客户案例', content: '深圳某零售连锁客单价提升至 ¥1500...' },
-        { id: 'KB003', title: '库存优化指南', content: '通过 ABC 分类法降低库存周转天数 30%...' },
-        { id: 'KB004', title: '华东渠道拓展经验', content: '下沉市场开拓：三四线城市渠道合伙人模式...' },
-        { id: 'KB005', title: '2024 春节营销报告', content: '春节期间华南地区订单量同比 +40%...' },
-      ];
-
-      const results = knowledgeBase
-        .filter(doc => doc.title.includes(keyword) || doc.content.includes(keyword))
-        .slice(0, limit);
-
-      if (results.length === 0) {
+      if (!searchQuery) {
         return {
           success: false,
           toolName: 'searchKnowledge',
-          error: `知识库中未找到关键词 "${keyword}" 的相关文档`,
-          duration: 120,
+          error: 'searchKnowledge requires query or keyword',
+          duration: Date.now() - startedAt,
         };
       }
 
-      const resultText = results
-        .map((r, i) => `${i + 1}. [${r.id}] ${r.title}\n   摘要：${r.content.slice(0, 30)}...`)
-        .join('\n');
+      if (!options.retriever || !options.contextBuilder) {
+        return {
+          success: false,
+          toolName: 'searchKnowledge',
+          error: 'RAG dependencies are not configured: retriever and contextBuilder are required',
+          duration: Date.now() - startedAt,
+        };
+      }
+
+      const logs = [
+        `searchKnowledge received query: ${searchQuery}`,
+        `Retriever topK: ${limit}`,
+      ];
+      const retrieveResult = options.retriever.retrieve(searchQuery, limit);
+      logs.push(`Retriever returned ${retrieveResult.documents.length} documents in ${retrieveResult.duration}ms`);
+
+      if (retrieveResult.documents.length === 0) {
+        return {
+          success: false,
+          toolName: 'searchKnowledge',
+          error: `知识库中未找到 "${searchQuery}" 的相关文档`,
+          data: {
+            query: searchQuery,
+            documents: [],
+            documentCount: 0,
+            retrievalDuration: retrieveResult.duration,
+            logs,
+          },
+          duration: Date.now() - startedAt,
+        };
+      }
+
+      const ragContext = options.contextBuilder.build(searchQuery, retrieveResult.documents);
+      logs.push(`ContextBuilder produced ${ragContext.context.length} characters of context`);
 
       return {
         success: true,
         toolName: 'searchKnowledge',
-        data: resultText,
-        duration: 120,
+        data: {
+          query: searchQuery,
+          context: ragContext.context,
+          documents: ragContext.documents.map(document => ({
+            id: document.id,
+            score: document.score,
+            matchedKeywords: document.matchedKeywords,
+            metadata: document.metadata,
+            content: document.content,
+          })),
+          documentCount: ragContext.documentCount,
+          retrievalDuration: retrieveResult.duration,
+          logs,
+        },
+        duration: Date.now() - startedAt,
       };
     },
   });

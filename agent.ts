@@ -148,6 +148,7 @@ export class Agent {
         const toolResult = await this.executor.run(toolName, args);
         toolTraceStep.toolResult = toolResult;
         toolTraceStep.duration = toolResult.duration;
+        toolTraceStep.rag = this.extractRagTrace(toolResult);
 
         if (toolResult.success) {
           this.eventEmitter.emit({
@@ -249,5 +250,24 @@ export class Agent {
     if (errorMessage.includes('Timeout')) return 'timeout';
     if (errorMessage.includes('Argument')) return 'argument';
     return 'execution';
+  }
+
+  private extractRagTrace(toolResult: ToolResult) {
+    if (toolResult.toolName !== 'searchKnowledge') return undefined;
+    if (!toolResult.data || typeof toolResult.data !== 'object') return undefined;
+
+    const data = toolResult.data as {
+      query?: unknown;
+      retrievalDuration?: unknown;
+      documentCount?: unknown;
+    };
+
+    if (typeof data.query !== 'string') return undefined;
+
+    return {
+      query: data.query,
+      retrievalDuration: typeof data.retrievalDuration === 'number' ? data.retrievalDuration : 0,
+      documentCount: typeof data.documentCount === 'number' ? data.documentCount : 0,
+    };
   }
 }
