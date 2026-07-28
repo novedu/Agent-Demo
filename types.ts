@@ -159,8 +159,50 @@ export interface AgentTrace {
   taskId: string;
   conversationId: string;
   steps: TraceStep[];
+  plan?: Plan;
+  stateHistory?: AgentStateSnapshot[];
+  workflowTrace?: WorkflowTraceStep[];
   totalDuration: number;
   success: boolean;
+  error?: string;
+  finalAnswer?: string;
+}
+
+export type PlanStepStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface PlanStep {
+  id: string;
+  tool: string;
+  description: string;
+  args?: Record<string, unknown>;
+  status: PlanStepStatus;
+}
+
+export interface Plan {
+  goal: string;
+  steps: PlanStep[];
+}
+
+export type AgentStateStatus = 'idle' | 'planning' | 'running' | 'completed' | 'failed';
+
+export interface AgentStateSnapshot {
+  goal: string;
+  currentStepId?: string;
+  completedStepIds: string[];
+  status: AgentStateStatus;
+  toolResults: Record<string, ToolResult>;
+  error?: string;
+  steps: PlanStep[];
+}
+
+export interface WorkflowTraceStep {
+  stepId: string;
+  description: string;
+  status: PlanStepStatus;
+  startedAt: number;
+  endedAt?: number;
+  duration: number;
+  traceSteps: TraceStep[];
   error?: string;
 }
 

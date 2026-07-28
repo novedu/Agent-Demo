@@ -34,6 +34,11 @@ async function main() {
     content: '华东地区 Q1 通过组合营销实现营收增长 25%，渠道合伙人计划贡献明显。',
     metadata: { title: 'Q1 销售策略复盘', category: 'Sales', updatedAt: '2024-04-20' },
   });
+  knowledgeBase.addDocument({
+    id: 'KB002',
+    content: '华东区域销售下降常见原因：春节后需求回落、渠道补货节奏放缓、重点客户预算延后，以及竞品在低线城市加大折扣。建议结合订单量、客单价和渠道反馈共同判断。',
+    metadata: { title: '华东销售下降原因分析', category: 'Sales', updatedAt: '2024-05-08' },
+  });
 
   const retriever = new Retriever(knowledgeBase);
   const contextBuilder = new ContextBuilder();
@@ -92,29 +97,7 @@ async function main() {
 
   const mockResponses: LLMResponse[] = [
     {
-      content: '我需要调用天气工具查询北京天气。',
-      toolCalls: [
-        { id: 'call_weather_001', name: 'getWeather', args: { city: '北京' } },
-      ],
-    },
-    {
-      content: '北京今天晴，气温 28°C，湿度 45%。',
-      done: true,
-    },
-    {
-      content: '我先查询华东 2024-02 的销售数据。',
-      toolCalls: [
-        { id: 'call_sales_001', name: 'querySalesData', args: { region: '华东', month: '2024-02' } },
-      ],
-    },
-    {
-      content: '销售数据已返回，我继续计算与 2024-01 相比的增长率。',
-      toolCalls: [
-        { id: 'call_metric_001', name: 'calculateMetrics', args: { current: 980000, previous: 1250000, metric: 'growth' } },
-      ],
-    },
-    {
-      content: '华东 2024-02 营收为 ¥980000，对比 2024-01 的 ¥1250000，增长率为 -21.60%。',
+      content: '华东区域 2024-02 营收为 ¥980000，较 2024-01 的 ¥1250000 下降 21.60%。结合知识库，下降可能来自春节后需求回落、渠道补货节奏放缓、重点客户预算延后，以及竞品折扣加剧。建议下一步拆分订单量、客单价和渠道来源，优先回访重点客户并复盘低线城市渠道策略。',
       done: true,
     },
   ];
@@ -133,6 +116,7 @@ async function main() {
 
   const agent = new Agent({
     llmProvider,
+    toolRegistry: registry,
     executor,
     conversationManager,
     eventEmitter,
@@ -144,12 +128,25 @@ async function main() {
   console.log(registry.describe());
   console.log(`\n🤖 当前 LLM Provider: ${llmProvider.name}`);
 
-  const traces: AgentTrace[] = [];
-  traces.push(await agent.run('查询北京天气'));
-  traces.push(await agent.run('查询销售数据并计算增长率'));
+  const trace: AgentTrace = await agent.run('分析华东区域销售下降原因，并生成报告');
 
-  const trace = traces[traces.length - 1];
-  console.log('\n📊 最后一次 Agent Trace:');
+  console.log('\n🧭 Initial Plan:');
+  console.log(`  goal: ${trace.plan?.goal}`);
+  trace.plan?.steps.forEach(step => {
+    console.log(`  ${step.id}. ${step.description} | tool=${step.tool} args=${JSON.stringify(step.args ?? {})} [${step.status}]`);
+  });
+
+  console.log('\n🔁 State 变化过程:');
+  trace.stateHistory?.forEach((snapshot, i) => {
+    console.log(`  ${i + 1}. status=${snapshot.status} current=${snapshot.currentStepId ?? '-'} completed=${snapshot.completedStepIds.join(',') || '-'}`);
+  });
+
+  console.log('\n🧩 Workflow Trace:');
+  trace.workflowTrace?.forEach(step => {
+    console.log(`  Step ${step.stepId}: ${step.description} [${step.status}] duration=${step.duration}ms traces=${step.traceSteps.length}`);
+  });
+
+  console.log('\n📊 Agent Trace:');
   console.log(`  taskId: ${trace.taskId}`);
   console.log(`  conversationId: ${trace.conversationId}`);
   console.log(`  totalSteps: ${trace.steps.length}`);
@@ -159,6 +156,8 @@ async function main() {
   if (trace.error) {
     console.log(`  error: ${trace.error}`);
   }
+
+  console.log(`  finalAnswer: ${trace.finalAnswer}`);
 
   console.log('\n📋 步骤详情:');
   trace.steps.forEach((step, i) => {
