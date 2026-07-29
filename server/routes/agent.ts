@@ -1,21 +1,31 @@
+import type { AgentEventSink, AgentServerEvent } from '../types/api';
 import type {
-  AgentEventSink,
-  AgentRuntimePort,
-  AgentServerEvent,
   AgentTaskListResponse,
   AgentTaskStatusResponse,
-  AgentTaskStore,
   ApiErrorResponse,
+  CancelAgentTaskResponse,
   CreateAgentTaskRequest,
   CreateAgentTaskResponse,
-  TaskCompletePayload,
+  RetryAgentTaskResponse,
 } from '../types/api';
+import type { TaskManager } from '../task/task-manager';
+import type { TaskRecord } from '../task/task-types';
 
 export const agentRoutes = [
   {
     method: 'POST',
     path: '/api/agent/tasks',
     description: 'Create an Agent task and start runtime execution.',
+  },
+  {
+    method: 'POST',
+    path: '/api/agent/tasks/:taskId/cancel',
+    description: 'Cancel a running or queued Agent task.',
+  },
+  {
+    method: 'POST',
+    path: '/api/agent/tasks/:taskId/retry',
+    description: 'Retry a failed or cancelled Agent task.',
   },
   {
     method: 'GET',
@@ -40,8 +50,7 @@ export interface AgentEventHub {
 }
 
 export interface AgentRouteDependencies {
-  runtime: AgentRuntimePort;
-  taskStore: AgentTaskStore;
+  taskManager: TaskManager;
   eventHub: AgentEventHub;
 }
 
@@ -49,6 +58,8 @@ export interface AgentRouteHandlers {
   createTask: (
     request: CreateAgentTaskRequest,
   ) => Promise<CreateAgentTaskResponse | ApiErrorResponse>;
+  cancelTask: (taskId: string) => Promise<CancelAgentTaskResponse | ApiErrorResponse>;
+  retryTask: (taskId: string) => Promise<RetryAgentTaskResponse | ApiErrorResponse>;
   getTask: (taskId: string) => Promise<AgentTaskStatusResponse | ApiErrorResponse>;
   listTasks: () => Promise<AgentTaskListResponse>;
   subscribeTaskEvents: (taskId: string, listener: AgentEventSink) => (() => void) | ApiErrorResponse;
@@ -60,70 +71,79 @@ export function createAgentRouteHandlers(deps: AgentRouteDependencies): AgentRou
       const input = request.input.trim();
 
       if (!input) {
-        return {
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'input is required',
-          },
-        };
+        return createApiError('INVALID_INPUT', 'input is required');
       }
 
-      const task = deps.taskStore.create(input);
-      deps.taskStore.update(task.taskId, {
-        status: 'running',
-        progress: 0,
-        currentStep: 'planning',
-      });
-
-      runRuntimeTask(deps, task.taskId, input);
+      const task = deps.taskManager.createTask(input);
+      deps.taskManager.startTask(task.taskId);
 
       return {
         taskId: task.taskId,
         status: 'running',
+      };
+    },
+
+    cancelTask: async (taskId) => {
+      const before = deps.taskManager.getTask(taskId);
+      const task = deps.taskManager.cancelTask(taskId);
+
+      if (!task || !before) {
+        return createTaskNotFoundError(taskId);
+      }
+
+      if (task.status !== 'cancelled') {
+        return createApiError('TASK_NOT_CANCELLABLE', `Task ${taskId} is ${before.status}, only queued/running tasks can cancel`);
+      }
+
+      return {
+        taskId: task.taskId,
+        status: 'cancelled',
+      };
+    },
+
+    retryTask: async (taskId) => {
+      const before = deps.taskManager.getTask(taskId);
+      const task = deps.taskManager.retryTask(taskId);
+
+      if (!task || !before) {
+        return createTaskNotFoundError(taskId);
+      }
+
+      if (before.retryCount >= before.maxRetry && (before.status === 'failed' || before.status === 'cancelled')) {
+        return createApiError('MAX_RETRY_EXCEEDED', `Task ${taskId} exceeded maxRetry=${before.maxRetry}`);
+      }
+
+      if (before.status !== 'failed' && before.status !== 'cancelled') {
+        return createApiError('TASK_NOT_RETRYABLE', `Task ${taskId} is ${before.status}, only failed/cancelled tasks can retry`);
+      }
+
+      return {
+        taskId: task.taskId,
+        status: task.status === 'running' ? 'running' : 'queued',
+        retryCount: task.retryCount,
+        maxRetry: task.maxRetry,
       };
     },
 
     getTask: async (taskId) => {
-      const task = deps.taskStore.findById(taskId);
+      const task = deps.taskManager.getTask(taskId);
 
       if (!task) {
-        return {
-          error: {
-            code: 'TASK_NOT_FOUND',
-            message: `Task ${taskId} was not found`,
-          },
-        };
+        return createTaskNotFoundError(taskId);
       }
 
-      return {
-        taskId: task.taskId,
-        status: task.status,
-        currentStep: task.currentStep,
-        progress: task.progress,
-        createdAt: task.createdAt,
-      };
+      return toTaskStatusResponse(task);
     },
 
     listTasks: async () => ({
-      tasks: deps.taskStore.list().map((task) => ({
-        taskId: task.taskId,
-        status: task.status,
-        currentStep: task.currentStep,
-        progress: task.progress,
-        createdAt: task.createdAt,
-      })),
+      tasks: deps.taskManager.listTasks().map(toTaskStatusResponse),
     }),
 
     subscribeTaskEvents: (taskId, listener) => {
-      const task = deps.taskStore.findById(taskId);
+      const task = deps.taskManager.getTask(taskId);
 
       if (!task) {
-        return {
-          error: {
-            code: 'TASK_NOT_FOUND',
-            message: `Task ${taskId} was not found`,
-          },
-        };
+        return createTaskNotFoundError(taskId);
       }
 
       return deps.eventHub.subscribe(taskId, listener);
@@ -131,128 +151,28 @@ export function createAgentRouteHandlers(deps: AgentRouteDependencies): AgentRou
   };
 }
 
-function runRuntimeTask(deps: AgentRouteDependencies, taskId: string, input: string): void {
-  void deps.runtime
-    .runTask({
-      taskId,
-      input,
-      emit: (event) => publishRuntimeEvent(deps, event),
-    })
-    .then((trace) => {
-      deps.taskStore.update(taskId, {
-        status: trace.success ? 'completed' : 'failed',
-        progress: 100,
-        currentStep: undefined,
-        completedAt: Date.now(),
-        error: trace.error,
-      });
-
-      deps.eventHub.publish({
-        id: `${taskId}_task_complete`,
-        taskId,
-        type: 'task_complete',
-        timestamp: Date.now(),
-        payload: {
-          status: trace.success ? 'completed' : 'failed',
-          duration: trace.totalDuration,
-          trace,
-          error: trace.error,
-        } satisfies TaskCompletePayload,
-      });
-    })
-    .catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
-
-      deps.taskStore.update(taskId, {
-        status: 'failed',
-        progress: 100,
-        currentStep: undefined,
-        completedAt: Date.now(),
-        error: message,
-      });
-
-      deps.eventHub.publish({
-        id: `${taskId}_task_complete`,
-        taskId,
-        type: 'task_complete',
-        timestamp: Date.now(),
-        payload: {
-          status: 'failed',
-          duration: 0,
-          error: message,
-        } satisfies TaskCompletePayload,
-      });
-    });
+function toTaskStatusResponse(task: TaskRecord): AgentTaskStatusResponse {
+  return {
+    taskId: task.taskId,
+    status: task.status,
+    currentStep: task.currentStep,
+    progress: task.progress,
+    createdAt: task.createdAt,
+    retryCount: task.retryCount,
+    maxRetry: task.maxRetry,
+    lastError: task.lastError,
+  };
 }
 
-function publishRuntimeEvent(deps: AgentRouteDependencies, event: AgentServerEvent): void {
-  switch (event.type) {
-    case 'plan_start':
-      deps.taskStore.update(event.taskId, {
-        status: 'running',
-        currentStep: 'planning',
-        progress: 5,
-      });
-      break;
-    case 'plan_update':
-      deps.taskStore.update(event.taskId, {
-        currentStep: 'workflow',
-        progress: 15,
-      });
-      break;
-    case 'tool_start': {
-      const payload = event.payload as { toolName?: string };
-      deps.taskStore.update(event.taskId, {
-        currentStep: payload.toolName ?? 'tool',
-      });
-      break;
-    }
-    case 'tool_success':
-      deps.taskStore.update(event.taskId, {
-        progress: Math.max(deps.taskStore.findById(event.taskId)?.progress ?? 0, 35),
-      });
-      break;
-    case 'rag_retrieve':
-      deps.taskStore.update(event.taskId, {
-        currentStep: 'searchKnowledge',
-        progress: Math.max(deps.taskStore.findById(event.taskId)?.progress ?? 0, 65),
-      });
-      break;
-    case 'reflection':
-      deps.taskStore.update(event.taskId, {
-        currentStep: 'reflection',
-        progress: Math.max(deps.taskStore.findById(event.taskId)?.progress ?? 0, 80),
-      });
-      break;
-    case 'memory_update':
-      deps.taskStore.update(event.taskId, {
-        currentStep: 'memory_update',
-        progress: Math.max(deps.taskStore.findById(event.taskId)?.progress ?? 0, 90),
-      });
-      break;
-    case 'state_update': {
-      const payload = event.payload as { currentStep?: string; progress?: number };
-      deps.taskStore.update(event.taskId, {
-        currentStep: payload.currentStep,
-        progress: payload.progress ?? deps.taskStore.findById(event.taskId)?.progress ?? 0,
-      });
-      break;
-    }
-    case 'final_answer':
-      deps.taskStore.update(event.taskId, {
-        currentStep: 'final_answer',
-        progress: Math.max(deps.taskStore.findById(event.taskId)?.progress ?? 0, 95),
-      });
-      break;
-    case 'tool_error':
-      deps.taskStore.update(event.taskId, {
-        status: 'failed',
-        progress: 100,
-      });
-      break;
-    case 'task_complete':
-      break;
-  }
+function createTaskNotFoundError(taskId: string): ApiErrorResponse {
+  return createApiError('TASK_NOT_FOUND', `Task ${taskId} was not found`);
+}
 
-  deps.eventHub.publish(event);
+function createApiError(code: string, message: string): ApiErrorResponse {
+  return {
+    error: {
+      code,
+      message,
+    },
+  };
 }

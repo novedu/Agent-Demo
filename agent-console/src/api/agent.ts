@@ -18,6 +18,7 @@ export interface SubscribeAgentEventsOptions {
 const agentServerURL = (import.meta.env.VITE_AGENT_SERVER_URL ?? '').replace(/\/$/, '');
 
 const supportedEventTypes: AgentEventType[] = [
+  'task_created',
   'plan_start',
   'plan_update',
   'tool_start',
@@ -26,8 +27,13 @@ const supportedEventTypes: AgentEventType[] = [
   'rag_retrieve',
   'reflection',
   'memory_update',
+  'evaluation_start',
+  'evaluation_complete',
   'state_update',
   'final_answer',
+  'task_cancelled',
+  'task_retry',
+  'task_failed',
   'task_complete',
 ];
 

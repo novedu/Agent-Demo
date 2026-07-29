@@ -3,6 +3,10 @@ import { ConversationManager } from '../../conversation';
 import { EventEmitter } from '../../event';
 import { ToolExecutor } from '../../executor';
 import { MemoryManager } from '../../memory/memory-manager';
+import { AgentMetrics } from '../../observability/metrics';
+import { RuleBasedEvaluator, type Evaluator } from '../../observability/evaluator';
+import { TraceManager } from '../../observability/trace-manager';
+import type { EvaluationContext, TraceRecord } from '../../observability/trace-types';
 import { Planner } from '../../planner';
 import { ToolRegistry } from '../../registry';
 import { ContextBuilder, KnowledgeBase, Retriever } from '../../src/knowledge';
@@ -13,6 +17,7 @@ import type {
   AgentRuntimePort,
   AgentServerEvent,
   FinalAnswerPayload,
+  EvaluationCompletePayload,
   MemoryUpdatePayload,
   RagRetrievePayload,
   ReflectionPayload,
@@ -22,6 +27,9 @@ import type {
 
 export interface AgentRuntimeAdapterConfig {
   llmProvider?: LLMProvider;
+  evaluator?: Evaluator;
+  traceManager?: TraceManager;
+  metrics?: AgentMetrics;
 }
 
 interface RuntimeBundle {
@@ -30,33 +38,87 @@ interface RuntimeBundle {
   memoryManager: MemoryManager;
 }
 
+interface PlannerRuntimeHooks {
+  onPlanStarted: (input: string) => void;
+  onPlanCreated: (plan: Plan) => void;
+  onPlanFailed: (error: Error) => void;
+}
+
 export class AgentRuntimeAdapter implements AgentRuntimePort {
-  constructor(private config: AgentRuntimeAdapterConfig = {}) {}
+  private traceManager: TraceManager;
+  private evaluator: Evaluator;
+  private metrics: AgentMetrics;
+
+  constructor(private config: AgentRuntimeAdapterConfig = {}) {
+    this.traceManager = config.traceManager ?? new TraceManager();
+    this.evaluator = config.evaluator ?? new RuleBasedEvaluator();
+    this.metrics = config.metrics ?? new AgentMetrics();
+  }
 
   async runTask(context: RuntimeTaskContext): Promise<AgentTrace> {
+    assertNotAborted(context.signal);
+    const observabilityTrace = this.traceManager.startTrace(context.taskId, {
+      input: context.input,
+    });
     const eventFactory = createServerEventFactory(context.taskId);
-    const bundle = this.createRuntimeBundle((plan) => {
-      context.emit(eventFactory('plan_update', {
-        plan,
-        steps: plan.steps,
-      }));
+    let plannerSpan: ReturnType<TraceManager['startSpan']> | undefined;
+    const bundle = this.createRuntimeBundle({
+      onPlanStarted: (input) => {
+        plannerSpan = this.traceManager.startSpan({
+          traceId: observabilityTrace.traceId,
+          taskId: context.taskId,
+          component: 'Planner',
+          metadata: { input },
+        });
+      },
+      onPlanCreated: (plan) => {
+        emitIfActive(context, eventFactory('plan_update', {
+          plan,
+          steps: plan.steps,
+        }));
+        const span = plannerSpan ?? this.traceManager.startSpan({
+          traceId: observabilityTrace.traceId,
+          taskId: context.taskId,
+          component: 'Planner',
+        });
+        this.traceManager.recordSpan(span.end('success', { stepCount: plan.steps.length }));
+      },
+      onPlanFailed: (error) => {
+        const span = plannerSpan ?? this.traceManager.startSpan({
+          traceId: observabilityTrace.traceId,
+          taskId: context.taskId,
+          component: 'Planner',
+        });
+        this.traceManager.recordSpan(span.end('failed', { error: error.message }));
+      },
     });
     let finalAnswerStreamed = false;
 
-    context.emit(eventFactory('plan_start', {
+    emitIfActive(context, eventFactory('plan_start', {
       input: context.input,
     }));
 
     this.bindRuntimeEvents(bundle.eventEmitter, context, eventFactory, {
+      traceId: observabilityTrace.traceId,
       markFinalAnswerStreamed: () => {
         finalAnswerStreamed = true;
       },
     });
 
+    const workflowSpan = this.traceManager.startSpan({
+      traceId: observabilityTrace.traceId,
+      taskId: context.taskId,
+      component: 'WorkflowRunner',
+    });
     const trace = await bundle.agent.run(context.input);
+    this.traceManager.recordSpan(workflowSpan.end(trace.success ? 'success' : 'failed', {
+      runtimeTaskId: trace.taskId,
+      totalSteps: trace.steps.length,
+    }));
+    assertNotAborted(context.signal);
 
     trace.stateHistory?.forEach((snapshot) => {
-      context.emit(eventFactory('state_update', {
+      emitIfActive(context, eventFactory('state_update', {
         status: snapshot.status === 'completed'
           ? 'completed'
           : snapshot.status === 'failed'
@@ -68,16 +130,54 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
       } satisfies StateUpdatePayload));
     });
 
-    context.emit(eventFactory('reflection', {
-      status: trace.success ? 'passed' : 'failed',
-      message: trace.success
-        ? '检查完整性通过：计划、工具结果、RAG 证据和最终回答已生成。'
-        : trace.error || '任务执行失败，需要人工检查。',
-    } satisfies ReflectionPayload));
+    if (trace.finalAnswer && !finalAnswerStreamed) {
+      streamFinalAnswer(trace.finalAnswer, (payload) => {
+        emitIfActive(context, eventFactory('final_answer', payload));
+      });
+    }
+
+    emitIfActive(context, eventFactory('final_answer', {
+      content: trace.finalAnswer,
+      done: true,
+    } satisfies FinalAnswerPayload));
+
+    emitIfActive(context, eventFactory('evaluation_start', {
+      traceId: observabilityTrace.traceId,
+    }));
+    const evaluatorSpan = this.traceManager.startSpan({
+      traceId: observabilityTrace.traceId,
+      taskId: context.taskId,
+      component: 'Evaluator',
+    });
+    const evaluation = this.evaluator.evaluate(
+      buildEvaluationContext(context, trace, this.traceManager.getTrace(observabilityTrace.traceId)),
+    );
+    this.traceManager.recordSpan(evaluatorSpan.end('success', { score: evaluation.score }));
+    bundle.memoryManager.remember({
+      type: 'episodic',
+      content: `Evaluation score=${evaluation.score}: ${evaluation.feedback.join(' ')}`,
+      importance: 0.65,
+      metadata: {
+        source: 'evaluation',
+        taskId: context.taskId,
+        criteria: evaluation.criteria,
+      },
+    });
+    emitIfActive(context, eventFactory('evaluation_complete', {
+      score: evaluation.score,
+      criteria: evaluation.criteria,
+      feedback: evaluation.feedback,
+    } satisfies EvaluationCompletePayload));
 
     const memoryItems = bundle.memoryManager.list();
     if (memoryItems.length > 0) {
-      context.emit(eventFactory('memory_update', {
+      const memorySpan = this.traceManager.startSpan({
+        traceId: observabilityTrace.traceId,
+        taskId: context.taskId,
+        component: 'Memory',
+        metadata: { itemCount: memoryItems.length, includesEvaluation: true },
+      });
+      emitIfActive(context, eventFactory('memory_update', {
         memoryType: 'episodic',
         items: memoryItems.map((item) => ({
           id: item.id,
@@ -86,18 +186,32 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
           importance: item.importance,
         })),
       } satisfies MemoryUpdatePayload));
+      this.traceManager.recordSpan(memorySpan.end('success'));
     }
 
-    if (trace.finalAnswer && !finalAnswerStreamed) {
-      streamFinalAnswer(trace.finalAnswer, (payload) => {
-        context.emit(eventFactory('final_answer', payload));
-      });
-    }
+    const reflectionSpan = this.traceManager.startSpan({
+      traceId: observabilityTrace.traceId,
+      taskId: context.taskId,
+      component: 'Reflection',
+      metadata: { evaluationScore: evaluation.score },
+    });
+    emitIfActive(context, eventFactory('reflection', {
+      status: trace.success && evaluation.score >= 0.7 ? 'passed' : 'needs_replanning',
+      message: trace.success
+        ? `评估分数 ${evaluation.score}，${evaluation.feedback.join(' ')}`
+        : trace.error || '任务执行失败，需要人工检查。',
+    } satisfies ReflectionPayload));
+    this.traceManager.recordSpan(reflectionSpan.end(trace.success ? 'success' : 'failed'));
 
-    context.emit(eventFactory('final_answer', {
-      content: trace.finalAnswer,
-      done: true,
-    } satisfies FinalAnswerPayload));
+    const completedObservabilityTrace = this.traceManager.endTrace(
+      observabilityTrace.traceId,
+      trace.success ? 'success' : 'failed',
+      { evaluationScore: evaluation.score },
+    );
+    if (completedObservabilityTrace) {
+      this.metrics.recordTrace(completedObservabilityTrace);
+      this.metrics.recordEvaluation(evaluation);
+    }
 
     return trace;
   }
@@ -106,11 +220,37 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
     eventEmitter: EventEmitter,
     context: RuntimeTaskContext,
     eventFactory: ReturnType<typeof createServerEventFactory>,
-    options: { markFinalAnswerStreamed: () => void },
+    options: { traceId: string; markFinalAnswerStreamed: () => void },
   ): void {
+    const activeSpans = new Map<string, ReturnType<TraceManager['startSpan']>>();
+
+    eventEmitter.on('llm_start', (event) => {
+      const runtimeEvent = event as Extract<AgentEvent, { type: 'llm_start' }>;
+      const llmSpan = this.traceManager.startSpan({
+        traceId: options.traceId,
+        taskId: context.taskId,
+        component: 'LLMProvider',
+        stepId: runtimeEvent.messageId,
+        metadata: {
+          provider: runtimeEvent.provider,
+          messageCount: runtimeEvent.messages.length,
+          toolCount: runtimeEvent.tools.length,
+        },
+      });
+      activeSpans.set(`llm:${runtimeEvent.messageId}`, llmSpan);
+    });
+
     eventEmitter.on('tool_start', (event) => {
       const runtimeEvent = event as Extract<AgentEvent, { type: 'tool_start' }>;
-      context.emit(eventFactory('tool_start', {
+      const toolSpan = this.traceManager.startSpan({
+        traceId: options.traceId,
+        taskId: context.taskId,
+        component: 'ToolExecutor',
+        stepId: runtimeEvent.toolName,
+        metadata: { args: runtimeEvent.args },
+      });
+      activeSpans.set(`tool:${runtimeEvent.toolName}`, toolSpan);
+      emitIfActive(context, eventFactory('tool_start', {
         toolName: runtimeEvent.toolName,
         args: runtimeEvent.args,
       }));
@@ -118,20 +258,48 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
 
     eventEmitter.on('tool_success', (event) => {
       const runtimeEvent = event as Extract<AgentEvent, { type: 'tool_success' }>;
-      context.emit(eventFactory('tool_success', {
+      const toolSpan = activeSpans.get(`tool:${runtimeEvent.toolName}`);
+      if (toolSpan) {
+        this.traceManager.recordSpan(toolSpan.end('success', {
+          duration: runtimeEvent.result.duration,
+          success: runtimeEvent.result.success,
+        }));
+        activeSpans.delete(`tool:${runtimeEvent.toolName}`);
+      }
+      emitIfActive(context, eventFactory('tool_success', {
         toolName: runtimeEvent.toolName,
         result: runtimeEvent.result,
       }));
 
       const ragPayload = toRagRetrievePayload(runtimeEvent.result);
       if (ragPayload) {
-        context.emit(eventFactory('rag_retrieve', ragPayload));
+        const ragSpan = this.traceManager.startSpan({
+          traceId: options.traceId,
+          taskId: context.taskId,
+          component: 'RAG',
+          stepId: runtimeEvent.toolName,
+          metadata: {
+            query: ragPayload.query,
+            documentCount: ragPayload.documents.length,
+          },
+        });
+        this.traceManager.recordSpan(ragSpan.end('success', {
+          duration: ragPayload.duration,
+        }));
+        emitIfActive(context, eventFactory('rag_retrieve', ragPayload));
       }
     });
 
     eventEmitter.on('tool_error', (event) => {
       const runtimeEvent = event as Extract<AgentEvent, { type: 'tool_error' }>;
-      context.emit(eventFactory('tool_error', {
+      const toolSpan = activeSpans.get(`tool:${runtimeEvent.toolName}`);
+      if (toolSpan) {
+        this.traceManager.recordSpan(toolSpan.end('failed', {
+          error: runtimeEvent.error.message,
+        }));
+        activeSpans.delete(`tool:${runtimeEvent.toolName}`);
+      }
+      emitIfActive(context, eventFactory('tool_error', {
         toolName: runtimeEvent.toolName,
         error: runtimeEvent.error,
       }));
@@ -139,16 +307,36 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
 
     eventEmitter.on('llm_response', (event) => {
       const runtimeEvent = event as Extract<AgentEvent, { type: 'llm_response' }>;
+      const llmSpan = activeSpans.get(`llm:${runtimeEvent.messageId}`);
+      if (llmSpan) {
+        this.traceManager.recordSpan(llmSpan.end('success', {
+          done: runtimeEvent.response.done,
+          hasToolCalls: Boolean(runtimeEvent.response.toolCalls?.length),
+        }));
+        activeSpans.delete(`llm:${runtimeEvent.messageId}`);
+      }
       if (!runtimeEvent.response.done || !runtimeEvent.response.content) return;
 
       options.markFinalAnswerStreamed();
       streamFinalAnswer(runtimeEvent.response.content, (payload) => {
-        context.emit(eventFactory('final_answer', payload));
+        emitIfActive(context, eventFactory('final_answer', payload));
       });
+    });
+
+    eventEmitter.on('llm_error', (event) => {
+      const runtimeEvent = event as Extract<AgentEvent, { type: 'llm_error' }>;
+      const llmSpan = activeSpans.get(`llm:${runtimeEvent.messageId}`);
+      if (llmSpan) {
+        this.traceManager.recordSpan(llmSpan.end('failed', {
+          provider: runtimeEvent.provider,
+          error: runtimeEvent.error.message,
+        }));
+        activeSpans.delete(`llm:${runtimeEvent.messageId}`);
+      }
     });
   }
 
-  private createRuntimeBundle(onPlanCreated: (plan: Plan) => void): RuntimeBundle {
+  private createRuntimeBundle(plannerHooks: PlannerRuntimeHooks): RuntimeBundle {
     const knowledgeBase = createKnowledgeBase();
     const retriever = new Retriever(knowledgeBase);
     const contextBuilder = new ContextBuilder();
@@ -169,7 +357,7 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
     });
 
     const llmProvider = this.config.llmProvider ?? createDefaultLLMProvider();
-    const planner = new ServerEventPlanner({ llmProvider, toolRegistry: registry }, onPlanCreated);
+    const planner = new ServerEventPlanner({ llmProvider, toolRegistry: registry }, plannerHooks);
 
     const agent = new Agent({
       llmProvider,
@@ -194,15 +382,21 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
 class ServerEventPlanner extends Planner {
   constructor(
     config: ConstructorParameters<typeof Planner>[0],
-    private onPlanCreated: (plan: Plan) => void,
+    private hooks: PlannerRuntimeHooks,
   ) {
     super(config);
   }
 
   override async createPlan(userInput: string): Promise<Plan> {
-    const plan = await super.createPlan(userInput);
-    this.onPlanCreated(plan);
-    return plan;
+    this.hooks.onPlanStarted(userInput);
+    try {
+      const plan = await super.createPlan(userInput);
+      this.hooks.onPlanCreated(plan);
+      return plan;
+    } catch (error) {
+      this.hooks.onPlanFailed(error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
   }
 }
 
@@ -338,7 +532,60 @@ function toRagRetrievePayload(result: ToolResult): RagRetrievePayload | undefine
   };
 }
 
+function buildEvaluationContext(
+  context: RuntimeTaskContext,
+  trace: AgentTrace,
+  observabilityTrace?: TraceRecord,
+): EvaluationContext {
+  return {
+    taskId: context.taskId,
+    input: context.input,
+    finalAnswer: trace.finalAnswer,
+    toolResults: trace.steps
+      .filter((step) => step.type === 'tool')
+      .map((step) => ({
+        toolName: step.toolName,
+        success: step.toolResult?.success,
+        data: step.toolResult?.data,
+        error: step.toolResult?.error,
+      })),
+    ragDocuments: trace.steps.flatMap((step) => {
+      const data = step.toolResult?.data;
+      if (!data || typeof data !== 'object') return [];
+
+      const documents = (data as { documents?: unknown }).documents;
+      if (!Array.isArray(documents)) return [];
+
+      return documents.map((document, index) => {
+        const item = document as {
+          id?: unknown;
+          content?: unknown;
+          score?: unknown;
+        };
+
+        return {
+          id: typeof item.id === 'string' ? item.id : `doc_${index + 1}`,
+          content: typeof item.content === 'string' ? item.content : '',
+          score: typeof item.score === 'number' ? item.score : undefined,
+        };
+      });
+    }),
+    trace: observabilityTrace,
+  };
+}
+
 function calculateProgress(completed: number, total: number): number {
   if (total <= 0) return 0;
   return Math.round((completed / total) * 100);
+}
+
+function emitIfActive(context: RuntimeTaskContext, event: AgentServerEvent): void {
+  if (context.signal?.aborted) return;
+  context.emit(event);
+}
+
+function assertNotAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new Error('Agent task aborted');
+  }
 }

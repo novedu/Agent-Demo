@@ -1,73 +1,41 @@
 import { agentRoutes, createAgentRouteHandlers, type AgentEventHub } from './routes/agent';
-import type {
-  AgentEventSink,
-  AgentRuntimePort,
-  AgentServerEvent,
-  AgentTaskSnapshot,
-  AgentTaskStore,
-} from './types/api';
+import { TaskManager } from './task/task-manager';
+import type { TaskRepository } from './task/task-repository';
+import { InMemoryTaskRepository } from './task/task-store';
+import type { AgentEventSink, AgentRuntimePort, AgentServerEvent } from './types/api';
 
 export interface AgentServerApp {
   routes: typeof agentRoutes;
   handlers: ReturnType<typeof createAgentRouteHandlers>;
-  taskStore: AgentTaskStore;
+  taskManager: TaskManager;
+  taskRepository: TaskRepository;
   eventHub: AgentEventHub;
 }
 
 export interface CreateAgentServerAppOptions {
   runtime: AgentRuntimePort;
-  taskStore?: AgentTaskStore;
+  taskRepository?: TaskRepository;
   eventHub?: AgentEventHub;
 }
 
 export function createAgentServerApp(options: CreateAgentServerAppOptions): AgentServerApp {
-  const taskStore = options.taskStore ?? createInMemoryTaskStore();
   const eventHub = options.eventHub ?? createInMemoryAgentEventHub();
+  const taskRepository = options.taskRepository ?? new InMemoryTaskRepository();
+  const taskManager = new TaskManager({
+    repository: taskRepository,
+    runtime: options.runtime,
+    publishEvent: eventHub.publish,
+  });
 
   return {
     routes: agentRoutes,
     handlers: createAgentRouteHandlers({
-      runtime: options.runtime,
-      taskStore,
+      taskManager,
       eventHub,
     }),
-    taskStore,
+    taskManager,
+    taskRepository,
     eventHub,
-  };
-}
-
-export function createInMemoryTaskStore(): AgentTaskStore {
-  const tasks = new Map<string, AgentTaskSnapshot>();
-
-  return {
-    create: (input) => {
-      const now = Date.now();
-      const task: AgentTaskSnapshot = {
-        taskId: createTaskId(),
-        input,
-        status: 'queued',
-        progress: 0,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      tasks.set(task.taskId, task);
-      return task;
-    },
-
-    update: (taskId, patch) => {
-      const task = tasks.get(taskId);
-      if (!task) return;
-
-      tasks.set(taskId, {
-        ...task,
-        ...patch,
-        updatedAt: Date.now(),
-      });
-    },
-
-    findById: (taskId) => tasks.get(taskId),
-    list: () => Array.from(tasks.values()).sort((a, b) => b.createdAt - a.createdAt),
   };
 }
 
@@ -107,8 +75,4 @@ export function createInMemoryAgentEventHub(): AgentEventHub {
       };
     },
   };
-}
-
-function createTaskId(): string {
-  return `task_${Math.random().toString(36).slice(2, 10)}_${Date.now()}`;
 }

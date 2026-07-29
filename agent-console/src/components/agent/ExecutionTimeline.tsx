@@ -49,6 +49,7 @@ function getTimelineLabel(type: WorkflowEvent['type']): string {
   if (type === 'tool_start' || type === 'tool_success' || type === 'tool_error') return 'Tool';
   if (type === 'rag_retrieve') return 'RAG';
   if (type === 'reflection') return 'Reflection';
+  if (type === 'evaluation_start' || type === 'evaluation_complete') return 'Evaluation';
   if (type === 'memory_update') return 'Memory';
   if (type === 'final_answer') return 'Final Answer';
   if (type === 'replanning') return 'Replanning';
@@ -60,6 +61,7 @@ function getTimelineIcon(type: WorkflowEvent['type']): string {
   if (type === 'tool_start' || type === 'tool_success' || type === 'tool_error') return 'FN';
   if (type === 'rag_retrieve') return 'KG';
   if (type === 'reflection') return 'RF';
+  if (type === 'evaluation_start' || type === 'evaluation_complete') return 'EV';
   if (type === 'memory_update') return 'M';
   if (type === 'final_answer') return 'OK';
   return 'EV';

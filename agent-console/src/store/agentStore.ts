@@ -4,6 +4,7 @@ import type {
   AgentEventType,
   AgentStateSnapshot,
   CitationRecord,
+  EvaluationResult,
   MemoryRecord,
   Message,
   Plan,
@@ -19,6 +20,7 @@ interface AgentState {
   tools: ToolCallRecord[];
   citations: CitationRecord[];
   memory: MemoryRecord[];
+  evaluation?: EvaluationResult;
   status: 'idle' | 'running' | 'success' | 'error';
   state?: AgentStateSnapshot;
   addMessage: (message: Message) => void;
@@ -85,6 +87,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       citations: [],
       memory: [],
       memories: [],
+      evaluation: undefined,
       plan: null,
       state: undefined,
       status: 'idle',
@@ -154,6 +157,9 @@ function handleAgentEvent(set: StoreSet, get: StoreGet, event: AgentEvent): void
   }
 
   switch (event.type) {
+    case 'task_created':
+      set({ status: 'running', isStreaming: true });
+      break;
     case 'plan_start':
       set({ status: 'running', isStreaming: true });
       break;
@@ -181,6 +187,13 @@ function handleAgentEvent(set: StoreSet, get: StoreGet, event: AgentEvent): void
         return { memory: nextMemory, memories: nextMemory };
       });
       break;
+    case 'evaluation_start':
+      break;
+    case 'evaluation_complete':
+      if (isEvaluationResult(payload)) {
+        set({ evaluation: payload });
+      }
+      break;
     case 'state_update':
       set({ state: toStateSnapshot(get(), event) });
       break;
@@ -193,6 +206,15 @@ function handleAgentEvent(set: StoreSet, get: StoreGet, event: AgentEvent): void
         isStreaming: false,
         activeAssistantMessageId: undefined,
       });
+      break;
+    case 'task_cancelled':
+      set({ status: 'error', isStreaming: false });
+      break;
+    case 'task_retry':
+      set({ status: 'running', isStreaming: true });
+      break;
+    case 'task_failed':
+      set({ status: 'error', isStreaming: false });
       break;
     case 'workflow_start':
     case 'reflection':
@@ -395,6 +417,7 @@ function getDefaultTitle(
   payload?: { toolName?: string; query?: string },
 ): string {
   if (type === 'plan_start') return 'Planner started';
+  if (type === 'task_created') return 'Task created';
   if (type === 'plan_update') return 'Plan generated';
   if (type === 'tool_start') return `${payload?.toolName ?? 'Tool'} started`;
   if (type === 'tool_success') return `${payload?.toolName ?? 'Tool'} success`;
@@ -402,9 +425,14 @@ function getDefaultTitle(
   if (type === 'rag_retrieve') return 'RAG retrieved context';
   if (type === 'reflection') return 'Reflection completed';
   if (type === 'memory_update') return 'Memory updated';
+  if (type === 'evaluation_start') return 'Evaluation started';
+  if (type === 'evaluation_complete') return 'Evaluation completed';
   if (type === 'state_update') return 'State updated';
   if (type === 'final_answer') return 'Final answer';
   if (type === 'task_complete') return 'Task complete';
+  if (type === 'task_cancelled') return 'Task cancelled';
+  if (type === 'task_retry') return 'Task retry';
+  if (type === 'task_failed') return 'Task failed';
   return type;
 }
 
@@ -454,6 +482,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isMemoryType(value: unknown): value is MemoryRecord['type'] {
   return value === 'working' || value === 'episodic' || value === 'semantic';
+}
+
+function isEvaluationResult(value: unknown): value is EvaluationResult {
+  if (!isRecord(value)) return false;
+  const criteria = value.criteria;
+  return (
+    typeof value.score === 'number' &&
+    Array.isArray(value.feedback) &&
+    isRecord(criteria) &&
+    typeof criteria.completeness === 'number' &&
+    typeof criteria.accuracy === 'number' &&
+    typeof criteria.groundedness === 'number' &&
+    typeof criteria.taskCompletion === 'number'
+  );
 }
 
 function createId(prefix: string): string {

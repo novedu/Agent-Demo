@@ -50,6 +50,20 @@ async function handleRequest(app: AgentServerApp, req: IncomingMessage, res: Ser
     return;
   }
 
+  const taskCancelMatch = pathname.match(/^\/api\/agent\/tasks\/([^/]+)\/cancel$/);
+  if (method === 'POST' && taskCancelMatch) {
+    const result = await app.handlers.cancelTask(taskCancelMatch[1]);
+    sendJson(res, isApiError(result) ? 404 : 200, result);
+    return;
+  }
+
+  const taskRetryMatch = pathname.match(/^\/api\/agent\/tasks\/([^/]+)\/retry$/);
+  if (method === 'POST' && taskRetryMatch) {
+    const result = await app.handlers.retryTask(taskRetryMatch[1]);
+    sendJson(res, isApiError(result) ? 400 : 200, result);
+    return;
+  }
+
   const taskEventsMatch = pathname.match(/^\/api\/agent\/tasks\/([^/]+)\/events$/);
   if (method === 'GET' && taskEventsMatch) {
     handleSse(app, taskEventsMatch[1], req, res);

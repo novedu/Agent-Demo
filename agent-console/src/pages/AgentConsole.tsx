@@ -1,6 +1,7 @@
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { CitationPanel } from '../components/agent/CitationPanel';
 import { ExecutionTimeline } from '../components/agent/ExecutionTimeline';
+import { EvaluationPanel } from '../components/agent/EvaluationPanel';
 import { KnowledgePanel } from '../components/agent/KnowledgePanel';
 import { MemoryPanel } from '../components/agent/MemoryPanel';
 import { PlanViewer } from '../components/agent/PlanViewer';
@@ -11,8 +12,18 @@ import { useAgentStore } from '../store/agentStore';
 
 export function AgentConsole() {
   const { start } = useAgentStream();
-  const { messages, plan, workflow, tools, citations, memories, state, status, isStreaming } =
-    useAgentStore();
+  const {
+    messages,
+    plan,
+    workflow,
+    tools,
+    citations,
+    memories,
+    evaluation,
+    state,
+    status,
+    isStreaming,
+  } = useAgentStore();
 
   return (
     <main className="grid h-screen grid-cols-[360px_minmax(560px,1fr)_380px] bg-slate-100 text-ink">
@@ -39,6 +50,7 @@ export function AgentConsole() {
 
       <aside className="min-h-0 space-y-4 overflow-y-auto border-l border-line bg-panel p-4">
         <KnowledgePanel citations={citations} />
+        <EvaluationPanel evaluation={evaluation} />
         <MemoryPanel memories={memories} />
         <CitationPanel citations={citations} />
       </aside>

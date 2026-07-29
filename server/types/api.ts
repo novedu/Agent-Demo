@@ -1,8 +1,10 @@
 import type { AgentTrace, Plan, PlanStep, ToolResult } from '../../types';
+import type { TaskRecord, TaskStatus } from '../task/task-types';
 
-export type AgentTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type AgentTaskStatus = TaskStatus;
 
 export type AgentServerEventType =
+  | 'task_created'
   | 'plan_start'
   | 'plan_update'
   | 'tool_start'
@@ -11,8 +13,13 @@ export type AgentServerEventType =
   | 'rag_retrieve'
   | 'reflection'
   | 'memory_update'
+  | 'evaluation_start'
+  | 'evaluation_complete'
   | 'state_update'
   | 'final_answer'
+  | 'task_cancelled'
+  | 'task_retry'
+  | 'task_failed'
   | 'task_complete';
 
 export interface AgentServerEvent<TPayload = unknown> {
@@ -32,17 +39,7 @@ export interface CreateAgentTaskResponse {
   status: Extract<AgentTaskStatus, 'running'>;
 }
 
-export interface AgentTaskSnapshot {
-  taskId: string;
-  input: string;
-  status: AgentTaskStatus;
-  currentStep?: string;
-  progress: number;
-  createdAt: number;
-  updatedAt: number;
-  completedAt?: number;
-  error?: string;
-}
+export type AgentTaskSnapshot = TaskRecord;
 
 export interface AgentTaskStatusResponse {
   taskId: string;
@@ -50,6 +47,9 @@ export interface AgentTaskStatusResponse {
   currentStep?: string;
   progress: number;
   createdAt: number;
+  retryCount: number;
+  maxRetry: number;
+  lastError?: string;
 }
 
 export interface AgentTaskListResponse {
@@ -61,6 +61,18 @@ export interface ApiErrorResponse {
     code: string;
     message: string;
   };
+}
+
+export interface CancelAgentTaskResponse {
+  taskId: string;
+  status: Extract<AgentTaskStatus, 'cancelled'>;
+}
+
+export interface RetryAgentTaskResponse {
+  taskId: string;
+  status: Extract<AgentTaskStatus, 'running' | 'queued'>;
+  retryCount: number;
+  maxRetry: number;
 }
 
 export interface PlanStartPayload {
@@ -119,6 +131,17 @@ export interface MemoryUpdatePayload {
   }>;
 }
 
+export interface EvaluationCompletePayload {
+  score: number;
+  criteria: {
+    completeness: number;
+    accuracy: number;
+    groundedness: number;
+    taskCompletion: number;
+  };
+  feedback: string[];
+}
+
 export interface StateUpdatePayload {
   status: AgentTaskStatus;
   currentStep?: string;
@@ -144,16 +167,10 @@ export type AgentEventSink = (event: AgentServerEvent) => void;
 export interface RuntimeTaskContext {
   taskId: string;
   input: string;
+  signal?: AbortSignal;
   emit: AgentEventSink;
 }
 
 export interface AgentRuntimePort {
   runTask: (context: RuntimeTaskContext) => Promise<AgentTrace>;
-}
-
-export interface AgentTaskStore {
-  create: (input: string) => AgentTaskSnapshot;
-  update: (taskId: string, patch: Partial<Omit<AgentTaskSnapshot, 'taskId' | 'createdAt'>>) => void;
-  findById: (taskId: string) => AgentTaskSnapshot | undefined;
-  list: () => AgentTaskSnapshot[];
 }

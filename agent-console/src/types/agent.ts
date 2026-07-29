@@ -1,4 +1,5 @@
 export type AgentEventType =
+  | 'task_created'
   | 'plan_start'
   | 'plan_update'
   | 'workflow_start'
@@ -9,8 +10,13 @@ export type AgentEventType =
   | 'reflection'
   | 'replanning'
   | 'memory_update'
+  | 'evaluation_start'
+  | 'evaluation_complete'
   | 'state_update'
   | 'final_answer'
+  | 'task_cancelled'
+  | 'task_retry'
+  | 'task_failed'
   | 'task_complete';
 
 export interface AgentEvent {
@@ -88,6 +94,19 @@ export interface AgentStateSnapshot {
   completedStepIds: string[];
   status: 'idle' | 'planning' | 'running' | 'success' | 'failed';
   error?: string;
+}
+
+export interface EvaluationCriteria {
+  completeness: number;
+  accuracy: number;
+  groundedness: number;
+  taskCompletion: number;
+}
+
+export interface EvaluationResult {
+  score: number;
+  criteria: EvaluationCriteria;
+  feedback: string[];
 }
 
 export interface AgentStreamEvent {
