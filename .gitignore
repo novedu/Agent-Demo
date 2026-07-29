@@ -4,8 +4,13 @@ build/
 coverage/
 
 *.log
+*.tsbuildinfo
 .DS_Store
 .env
 .env.*
-!.env.example   # 强制保留这个示例文件
 
+agent-console/vite.config.js
+agent-console/vite.config.d.ts
+agent-console/vitest.config.js
+agent-console/vitest.config.d.ts
+!.env.example   # 强制保留这个示例文件
