@@ -12,6 +12,7 @@ import { EventEmitter } from './event';
 import { ToolExecutor } from './executor';
 import { AgentState } from './state';
 import type { LLMProvider } from './src/llm';
+import { MemoryManager } from './memory/memory-manager';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -26,6 +27,7 @@ export interface WorkflowRunnerConfig {
   executor: ToolExecutor;
   conversationManager: ConversationManager;
   eventEmitter: EventEmitter;
+  memoryManager?: MemoryManager;
   systemPrompt?: string;
   maxSteps?: number;
 }
@@ -51,6 +53,7 @@ export class WorkflowRunner {
   private executor: ToolExecutor;
   private conversationManager: ConversationManager;
   private eventEmitter: EventEmitter;
+  private memoryManager?: MemoryManager;
   private systemPrompt?: string;
   private maxSteps: number;
 
@@ -59,6 +62,7 @@ export class WorkflowRunner {
     this.executor = config.executor;
     this.conversationManager = config.conversationManager;
     this.eventEmitter = config.eventEmitter;
+    this.memoryManager = config.memoryManager;
     this.systemPrompt = config.systemPrompt;
     this.maxSteps = config.maxSteps ?? 10;
   }
@@ -179,6 +183,12 @@ export class WorkflowRunner {
     }
 
     if (success) {
+      if (finalAnswer) {
+        this.memoryManager?.recordFinalAnswer(finalAnswer, {
+          taskId: input.taskId,
+          conversationId: input.conversationId,
+        });
+      }
       input.state.markCompleted();
     }
 
@@ -193,7 +203,7 @@ export class WorkflowRunner {
 
   private async runLLMStep(input: WorkflowRunInput, stepDescription: string, stepNumber: number) {
     const messages = this.conversationManager.getMessages(input.conversationId);
-    const llmMessages = this.buildLLMMessages(messages, stepDescription);
+    const llmMessages = this.buildLLMMessages(messages, stepDescription, input.userInput);
     const toolDefinitions = this.executor.getToolDefinitions();
 
     this.eventEmitter.emit({
@@ -282,6 +292,11 @@ export class WorkflowRunner {
     traceStep.toolResult = toolResult;
     traceStep.duration = toolResult.duration;
     traceStep.rag = this.extractRagTrace(toolResult);
+    this.memoryManager?.recordToolResult(toolName, toolResult, {
+      taskId: input.taskId,
+      conversationId: input.conversationId,
+      stepNumber,
+    });
 
     if (toolResult.success) {
       traceStep.status = 'success';
@@ -322,7 +337,7 @@ export class WorkflowRunner {
     return traceStep;
   }
 
-  private buildLLMMessages(messages: Message[], stepDescription: string): ChatMessage[] {
+  private buildLLMMessages(messages: Message[], stepDescription: string, userInput: string): ChatMessage[] {
     const now = Date.now();
     const systemMessages: ChatMessage[] = [];
 
@@ -341,6 +356,16 @@ export class WorkflowRunner {
       content: `当前工作流步骤：${stepDescription}`,
       createdAt: now,
     });
+
+    const memoryContext = this.memoryManager?.buildContext(`${userInput} ${stepDescription}`);
+    if (memoryContext) {
+      systemMessages.push({
+        id: `memory_context_${generateId()}`,
+        role: 'system',
+        content: memoryContext,
+        createdAt: now,
+      });
+    }
 
     return [
       ...systemMessages,

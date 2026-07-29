@@ -6,6 +6,7 @@ import { ConversationManager } from './conversation';
 import { registerTools } from './tools';
 import { ContextBuilder, KnowledgeBase, Retriever } from './src/knowledge';
 import { MockLLMProvider, OpenAIProvider } from './src/llm';
+import { MemoryManager } from './memory/memory-manager';
 import type { AgentTrace, LLMResponse } from './types';
 
 declare const process: {
@@ -49,6 +50,14 @@ async function main() {
   const executor = new ToolExecutor(registry);
   const conversationManager = new ConversationManager();
   const eventEmitter = new EventEmitter();
+  const memoryManager = new MemoryManager();
+
+  memoryManager.remember({
+    type: 'semantic',
+    content: '历史经验：华东区域销售分析通常需要同时关注营收、订单量、客单价、渠道补货和重点客户预算变化。',
+    importance: 0.85,
+    metadata: { source: 'seed', domain: 'sales' },
+  });
 
   eventEmitter.on('llm_start', (event) => {
     const e = event as { conversationId: string; provider: string; messages: unknown[]; tools: unknown[] };
@@ -97,6 +106,14 @@ async function main() {
 
   const mockResponses: LLMResponse[] = [
     {
+      content: '已记录：你主要使用 Vue3 开发。后续我会优先按 Vue3 技术栈给出方案。',
+      done: true,
+    },
+    {
+      content: '可以设计一个基于 Vue3 的 AI 项目：前端使用 Vue3 + TypeScript 构建对话工作台，后端提供 Agent Runtime API，包含 Planner、Memory、RAG 和 Tool Calling，用于企业知识问答和自动报告生成。',
+      done: true,
+    },
+    {
       content: '华东区域 2024-02 营收为 ¥980000，较 2024-01 的 ¥1250000 下降 21.60%。结合知识库，下降可能来自春节后需求回落、渠道补货节奏放缓、重点客户预算延后，以及竞品折扣加剧。建议下一步拆分订单量、客单价和渠道来源，优先回访重点客户并复盘低线城市渠道策略。',
       done: true,
     },
@@ -120,6 +137,7 @@ async function main() {
     executor,
     conversationManager,
     eventEmitter,
+    memoryManager,
     systemPrompt: '你是一个企业 AI 助手。需要使用工具时先调用工具，拿到结果后再给用户清晰回答。',
     maxSteps: 20,
   });
@@ -128,7 +146,41 @@ async function main() {
   console.log(registry.describe());
   console.log(`\n🤖 当前 LLM Provider: ${llmProvider.name}`);
 
+  console.log('\n🧪 Case1: 用户背景写入 semantic memory');
+  const case1Trace = await agent.run('我主要使用Vue3开发');
+  const vueSemanticAfterCase1 = memoryManager
+    .list('semantic')
+    .filter(memory => memory.content.includes('Vue3'));
+  console.log(`  input: 我主要使用Vue3开发`);
+  console.log(`  finalAnswer: ${case1Trace.finalAnswer}`);
+  console.log(`  semantic memory 保存: ${vueSemanticAfterCase1.length > 0 ? 'PASS' : 'FAIL'}`);
+  vueSemanticAfterCase1.forEach(memory => {
+    console.log(`  - ${memory.content}`);
+  });
+
+  console.log('\n🧪 Case2: MemoryRetriever 找到 Vue3 背景');
+  const case2Trace = await agent.run('帮我设计一个AI项目');
+  const retrievedVueMemories = memoryManager
+    .retrieve({ query: 'AI项目 技术栈 前端', types: ['semantic'], limit: 5 })
+    .filter(memory => memory.content.includes('Vue3'));
+  console.log(`  input: 帮我设计一个AI项目`);
+  console.log(`  finalAnswer: ${case2Trace.finalAnswer}`);
+  console.log(`  MemoryRetriever 找到 Vue3 背景: ${retrievedVueMemories.length > 0 ? 'PASS' : 'FAIL'}`);
+  retrievedVueMemories.forEach(memory => {
+    console.log(`  - score=${memory.score} ${memory.content}`);
+  });
+
+  console.log('\n🧪 Case3: 完成 Agent 任务并保存 episodic 摘要');
   const trace: AgentTrace = await agent.run('分析华东区域销售下降原因，并生成报告');
+  const case3EpisodicSummaries = memoryManager
+    .list('episodic')
+    .filter(memory => memory.metadata?.source === 'final_answer' && memory.metadata?.conversationId === trace.conversationId);
+  console.log(`  input: 分析华东区域销售下降原因，并生成报告`);
+  console.log(`  finalAnswer: ${trace.finalAnswer}`);
+  console.log(`  episodic memory 保存任务摘要: ${case3EpisodicSummaries.length > 0 ? 'PASS' : 'FAIL'}`);
+  case3EpisodicSummaries.forEach(memory => {
+    console.log(`  - ${memory.content.slice(0, 120)}...`);
+  });
 
   console.log('\n🧭 Initial Plan:');
   console.log(`  goal: ${trace.plan?.goal}`);
@@ -181,6 +233,11 @@ async function main() {
     const roleIcon = msg.role === 'user' ? '👤' : msg.role === 'assistant' ? '🤖' : '🔧';
     const statusIcon = msg.status === 'success' ? '✅' : msg.status === 'error' ? '❌' : '⏳';
     console.log(`  ${i + 1}. ${roleIcon} ${statusIcon} ${msg.role}: ${msg.content.slice(0, 50)}...`);
+  });
+
+  console.log('\n🧠 Memory:');
+  memoryManager.list().forEach((memory, i) => {
+    console.log(`  ${i + 1}. [${memory.type}] importance=${memory.importance} ${memory.content.slice(0, 70)}...`);
   });
 }
 

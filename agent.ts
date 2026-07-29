@@ -7,6 +7,7 @@ import { PlanValidator } from './plan-validator';
 import { AgentState } from './state';
 import { WorkflowRunner } from './workflow';
 import { ToolRegistry } from './registry';
+import { MemoryManager } from './memory/memory-manager';
 import type { LLMProvider } from './src/llm';
 
 function generateId(): string {
@@ -19,6 +20,7 @@ export interface AgentConfig {
   executor: ToolExecutor;
   conversationManager: ConversationManager;
   eventEmitter: EventEmitter;
+  memoryManager?: MemoryManager;
   planner?: Planner;
   planValidator?: PlanValidator;
   systemPrompt?: string;
@@ -28,6 +30,7 @@ export interface AgentConfig {
 export class Agent {
   private conversationManager: ConversationManager;
   private eventEmitter: EventEmitter;
+  private memoryManager?: MemoryManager;
   private planner: Planner;
   private planValidator: PlanValidator;
   private workflow: WorkflowRunner;
@@ -35,6 +38,7 @@ export class Agent {
   constructor(config: AgentConfig) {
     this.conversationManager = config.conversationManager;
     this.eventEmitter = config.eventEmitter;
+    this.memoryManager = config.memoryManager;
     this.planner = config.planner ?? new Planner({
       llmProvider: config.llmProvider,
       toolRegistry: config.toolRegistry,
@@ -45,6 +49,7 @@ export class Agent {
       executor: config.executor,
       conversationManager: config.conversationManager,
       eventEmitter: config.eventEmitter,
+      memoryManager: config.memoryManager,
       systemPrompt: config.systemPrompt,
       maxSteps: config.maxSteps,
     });
@@ -59,6 +64,11 @@ export class Agent {
       role: 'user',
       content: userInput,
       status: 'success',
+    });
+
+    this.memoryManager?.recordUserInput(userInput, {
+      taskId,
+      conversationId: conversation.id,
     });
 
     let plan: Plan;
