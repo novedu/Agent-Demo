@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { CitationPanel } from '../components/agent/CitationPanel';
 import { ExecutionTimeline } from '../components/agent/ExecutionTimeline';
@@ -11,8 +10,7 @@ import { useAgentStream } from '../hooks/useAgentStream';
 import { useAgentStore } from '../store/agentStore';
 
 export function AgentConsole() {
-  const taskId = useMemo(() => `console_${Math.random().toString(36).slice(2, 10)}`, []);
-  const { start } = useAgentStream(taskId);
+  const { start } = useAgentStream();
   const { messages, plan, workflow, tools, citations, memories, state, status, isStreaming } =
     useAgentStore();
 

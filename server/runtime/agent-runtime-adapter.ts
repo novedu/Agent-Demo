@@ -81,6 +81,7 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
         memoryType: 'episodic',
         items: memoryItems.map((item) => ({
           id: item.id,
+          type: item.type,
           content: item.content,
           importance: item.importance,
         })),

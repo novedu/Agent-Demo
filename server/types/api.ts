@@ -113,6 +113,7 @@ export interface MemoryUpdatePayload {
   memoryType: 'working' | 'episodic' | 'semantic';
   items: Array<{
     id: string;
+    type?: 'working' | 'episodic' | 'semantic';
     content: string;
     importance: number;
   }>;

@@ -9,10 +9,13 @@ export type AgentEventType =
   | 'reflection'
   | 'replanning'
   | 'memory_update'
-  | 'final_answer';
+  | 'state_update'
+  | 'final_answer'
+  | 'task_complete';
 
 export interface AgentEvent {
   id: string;
+  taskId?: string;
   type: AgentEventType;
   timestamp: number;
   payload: unknown;
