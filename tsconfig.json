@@ -7,14 +7,17 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
+    "paths": {
+      "@runtime/*": ["./packages/agent-runtime/src/*"],
+      "@shared/*": ["./packages/shared-utils/src/*"],
+      "@shared-types/*": ["./packages/shared-types/src/*"]
+    },
     "types": ["node"],
     "noEmit": true
   },
   "include": [
-    "*.ts",
-    "memory/**/*.ts",
-    "src/**/*.ts",
-    "server/**/*.ts"
+    "apps/runtime-server/src/**/*.ts",
+    "./packages/**/*.ts"
   ],
   "exclude": [
     "node_modules",

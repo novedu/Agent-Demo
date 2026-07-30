@@ -1,0 +1,15 @@
+{
+  "name": "@agent-demo/runtime-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@agent-demo/agent-runtime": "workspace:*",
+    "@agent-demo/shared-types": "workspace:*",
+    "@agent-demo/shared-utils": "workspace:*"
+  }
+}

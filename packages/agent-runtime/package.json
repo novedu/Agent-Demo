@@ -1,0 +1,11 @@
+{
+  "name": "@agent-demo/agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@agent-demo/shared-types": "workspace:*",
+    "@agent-demo/shared-utils": "workspace:*"
+  }
+}

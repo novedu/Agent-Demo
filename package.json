@@ -1,12 +1,19 @@
 {
-  "name": "11",
+  "name": "agent-runtime-platform",
   "version": "1.0.0",
+  "private": true,
   "description": "",
   "main": "index.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "server": "tsx server/index.ts",
+    "server": "tsx apps/runtime-server/src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx security/reliability-test.ts"
+    "build": "npm run typecheck && npm --prefix apps/agent-console run build",
+    "lint": "npm --prefix apps/agent-console run lint",
+    "test": "tsx packages/agent-runtime/src/tool/security/reliability-test.ts && npm --prefix apps/agent-console run test"
   },
   "keywords": [],
   "author": "",
