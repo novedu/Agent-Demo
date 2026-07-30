@@ -1,15 +1,18 @@
 import type { ToolCallRecord } from '../../types/agent';
-import { Panel, StatusTag } from '../ui';
+import { Panel, Skeleton, StatusTag } from '../ui';
 
 interface ToolInspectorProps {
   tools: ToolCallRecord[];
+  isLoading?: boolean;
 }
 
-export function ToolInspector({ tools }: ToolInspectorProps) {
+export function ToolInspector({ tools, isLoading }: ToolInspectorProps) {
   return (
     <Panel title="Tool" description="Function calls, inputs and outputs">
       <div className="space-y-3">
-        {tools.length === 0 ? (
+        {isLoading && tools.length === 0 ? (
+          <Skeleton lines={5} />
+        ) : tools.length === 0 ? (
           <p className="text-sm text-muted">No tool calls yet.</p>
         ) : (
           tools.map((tool) => (

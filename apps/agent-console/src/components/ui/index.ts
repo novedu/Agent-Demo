@@ -5,4 +5,5 @@ export { Button } from './Button';
 export { Card } from './Card';
 export { Divider } from './Divider';
 export { Panel } from './Panel';
+export { Skeleton } from './Skeleton';
 export { StatusTag } from './StatusTag';

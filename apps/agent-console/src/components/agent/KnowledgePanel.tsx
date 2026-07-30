@@ -1,15 +1,18 @@
 import type { CitationRecord } from '../../types/agent';
-import { Badge, Panel } from '../ui';
+import { Badge, Panel, Skeleton } from '../ui';
 
 interface KnowledgePanelProps {
   citations: CitationRecord[];
+  isLoading?: boolean;
 }
 
-export function KnowledgePanel({ citations }: KnowledgePanelProps) {
+export function KnowledgePanel({ citations, isLoading }: KnowledgePanelProps) {
   return (
     <Panel title="Knowledge" description="Retrieved context chunks for this task">
       <div className="space-y-3">
-        {citations.length === 0 ? (
+        {isLoading && citations.length === 0 ? (
+          <Skeleton lines={4} />
+        ) : citations.length === 0 ? (
           <p className="text-sm text-muted">No knowledge retrieved yet.</p>
         ) : (
           citations.map((item) => (

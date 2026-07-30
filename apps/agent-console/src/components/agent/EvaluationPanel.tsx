@@ -1,8 +1,9 @@
 import type { EvaluationCriteria, EvaluationResult } from '../../types/agent';
-import { Panel } from '../ui';
+import { Panel, Skeleton } from '../ui';
 
 interface EvaluationPanelProps {
   evaluation?: EvaluationResult;
+  isLoading?: boolean;
 }
 
 const criteriaLabels: Record<keyof EvaluationCriteria, string> = {
@@ -12,11 +13,13 @@ const criteriaLabels: Record<keyof EvaluationCriteria, string> = {
   taskCompletion: 'Task Completion',
 };
 
-export function EvaluationPanel({ evaluation }: EvaluationPanelProps) {
+export function EvaluationPanel({ evaluation, isLoading }: EvaluationPanelProps) {
   return (
     <Panel title="Evaluation" description="Quality score and review feedback">
       <div className="space-y-4">
-        {!evaluation ? (
+        {isLoading && !evaluation ? (
+          <Skeleton lines={5} />
+        ) : !evaluation ? (
           <p className="text-sm text-muted">No evaluation result yet.</p>
         ) : (
           <>

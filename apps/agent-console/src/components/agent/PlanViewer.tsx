@@ -1,14 +1,17 @@
 import type { AgentPlan } from '../../types/agent';
-import { Badge, Panel, StatusTag } from '../ui';
+import { Badge, Panel, Skeleton, StatusTag } from '../ui';
 
 interface PlanViewerProps {
   plan?: AgentPlan;
+  isLoading?: boolean;
 }
 
-export function PlanViewer({ plan }: PlanViewerProps) {
+export function PlanViewer({ plan, isLoading }: PlanViewerProps) {
   return (
     <Panel title="Plan" description="Planner generated execution steps">
-      {!plan ? (
+      {isLoading && !plan ? (
+        <Skeleton lines={5} />
+      ) : !plan ? (
         <p className="text-sm text-muted">No plan generated yet.</p>
       ) : (
         <div className="space-y-3">

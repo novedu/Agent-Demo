@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Badge, Card } from '../ui';
 import { classNames } from '../ui/classNames';
 import { ExecutionStatus } from './ExecutionStatus';
-import { getNodeIcon, type ExecutionNodeRecord } from './execution-model';
+import { getKindLabel, getNodeIcon, type ExecutionNodeRecord } from './execution-model';
 
 interface ExecutionNodeProps {
   node: ExecutionNodeRecord;
@@ -12,30 +12,33 @@ interface ExecutionNodeProps {
 
 export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
   const isRunning = node.status === 'running';
+  const tone = getNodeTone(node.status);
 
   return (
     <motion.button
       type="button"
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.16, ease: 'easeOut' }}
+      whileHover={{ y: -1 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
       onClick={() => onSelect(node)}
       className="w-full cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-accent/20"
     >
       <Card
         className={classNames(
-          'relative min-h-[132px] p-3 transition-colors duration-200',
-          active ? 'border-accent bg-blue-50' : 'hover:border-lineStrong hover:bg-panel',
+          'relative min-h-[118px] p-3 transition-colors duration-200',
+          tone.border,
+          tone.bg,
+          active ? 'ring-2 ring-accent/20' : 'hover:border-lineStrong hover:bg-panel',
         )}
       >
         {isRunning && (
           <motion.span
-            className="absolute right-3 top-3 h-2 w-2 rounded-full bg-amber-500"
+            className="absolute right-3 top-3 h-2 w-2 rounded-full bg-blue-500"
             animate={{ opacity: [0.35, 1, 0.35], scale: [1, 1.35, 1] }}
             transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
         <div className="flex items-start justify-between gap-3">
-          <Badge tone={active ? 'info' : 'neutral'} className="h-8 w-8 justify-center px-0">
+          <Badge tone={tone.badge} className="h-8 w-8 justify-center px-0">
             {getNodeIcon(node.kind)}
           </Badge>
           <ExecutionStatus status={node.status} />
@@ -45,7 +48,7 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
           <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{node.summary}</p>
         </div>
         <div className="mt-3 flex items-center justify-between text-[11px] text-muted">
-          <span>{node.kind}</span>
+          <span>{getKindLabel(node.kind)}</span>
           <span>{formatDuration(node.duration)}</span>
         </div>
       </Card>
@@ -56,4 +59,24 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
 function formatDuration(duration?: number): string {
   if (duration === undefined) return 'pending';
   return `${duration}ms`;
+}
+
+function getNodeTone(status: ExecutionNodeRecord['status']): {
+  bg: string;
+  border: string;
+  badge: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+} {
+  if (status === 'success') {
+    return { bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'success' };
+  }
+  if (status === 'running') {
+    return { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'info' };
+  }
+  if (status === 'failed') {
+    return { bg: 'bg-rose-50', border: 'border-rose-200', badge: 'danger' };
+  }
+  if (status === 'cancelled') {
+    return { bg: 'bg-amber-50', border: 'border-amber-200', badge: 'warning' };
+  }
+  return { bg: 'bg-white', border: 'border-line', badge: 'neutral' };
 }

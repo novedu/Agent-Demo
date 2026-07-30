@@ -10,9 +10,23 @@ import type {
 } from '../../types/agent';
 
 export type ExecutionNodeKind =
-  'planner' | 'tool' | 'memory' | 'reflection' | 'evaluation' | 'answer';
+  | 'planner'
+  | 'workflow'
+  | 'tool'
+  | 'rag'
+  | 'memory'
+  | 'reflection'
+  | 'evaluation'
+  | 'llm'
+  | 'answer';
 
-export type ExecutionNodeStatus = 'waiting' | 'running' | 'success' | 'failed' | 'skipped';
+export type ExecutionNodeStatus =
+  | 'waiting'
+  | 'running'
+  | 'success'
+  | 'failed'
+  | 'skipped'
+  | 'cancelled';
 
 export interface ExecutionNodeRecord {
   id: string;
@@ -47,9 +61,11 @@ export function buildExecutionNodes(input: ExecutionModelInput): ExecutionNodeRe
     .find((message) => message.role === 'assistant');
   const nodes: ExecutionNodeRecord[] = [
     buildPlannerNode(input),
+    buildWorkflowNode(input),
     ...buildToolNodes(input),
-    buildMemoryNode(input),
+    buildRagNode(input),
     buildReflectionNode(input),
+    buildMemoryNode(input),
     buildEvaluationNode(input),
     {
       id: 'answer',
@@ -87,11 +103,26 @@ export function getExecutionProgress(nodes: ExecutionNodeRecord[]): number {
 
 export function getNodeIcon(kind: ExecutionNodeKind): string {
   if (kind === 'planner') return 'PL';
+  if (kind === 'workflow') return 'WF';
   if (kind === 'tool') return 'TL';
+  if (kind === 'rag') return 'RG';
   if (kind === 'memory') return 'MM';
   if (kind === 'reflection') return 'RF';
   if (kind === 'evaluation') return 'EV';
+  if (kind === 'llm') return 'LM';
   return 'AN';
+}
+
+export function getKindLabel(kind: ExecutionNodeKind): string {
+  if (kind === 'planner') return 'Planner';
+  if (kind === 'workflow') return 'Workflow';
+  if (kind === 'tool') return 'Tool';
+  if (kind === 'rag') return 'RAG';
+  if (kind === 'memory') return 'Memory';
+  if (kind === 'reflection') return 'Reflection';
+  if (kind === 'evaluation') return 'Evaluation';
+  if (kind === 'llm') return 'LLM';
+  return 'Answer';
 }
 
 function buildPlannerNode(input: ExecutionModelInput): ExecutionNodeRecord {
@@ -111,6 +142,34 @@ function buildPlannerNode(input: ExecutionModelInput): ExecutionNodeRecord {
     output: input.plan,
     metadata: { stepCount: input.plan?.steps.length ?? 0 },
     trace: getEventsByTypes(input.events, ['plan_start', 'plan_update']),
+  };
+}
+
+function buildWorkflowNode(input: ExecutionModelInput): ExecutionNodeRecord {
+  const startEvent =
+    getFirstEvent(input.events, 'workflow_start') ??
+    getFirstEvent(input.events, 'state_update') ??
+    getFirstEvent(input.events, 'tool_start');
+  const completeEvent =
+    getFirstEvent(input.events, 'task_complete') ??
+    getFirstEvent(input.events, 'final_answer') ??
+    getLastEvent(input.events, 'state_update');
+
+  return {
+    id: 'workflow',
+    kind: 'workflow',
+    component: 'Workflow',
+    summary: input.workflow.length
+      ? `${input.workflow.length} runtime events observed`
+      : 'Waiting for workflow activity',
+    status: getWorkflowStatus(input, startEvent?.timestamp, completeEvent?.timestamp),
+    duration: getDuration(startEvent?.timestamp, completeEvent?.timestamp),
+    startTime: startEvent?.timestamp,
+    endTime: completeEvent?.timestamp,
+    input: input.plan,
+    output: input.workflow,
+    metadata: { eventCount: input.workflow.length },
+    trace: getEventsByTypes(input.events, ['workflow_start', 'state_update', 'task_complete']),
   };
 }
 
@@ -170,6 +229,29 @@ function buildToolNode(
     arguments: tool?.args ?? planArgs,
     metadata: { toolName },
     trace: [startEvent, successEvent, errorEvent].filter(Boolean),
+  };
+}
+
+function buildRagNode(input: ExecutionModelInput): ExecutionNodeRecord {
+  const ragEvents = getEventsByTypes(input.events, ['rag_retrieve']);
+  const firstEvent = ragEvents[0];
+  const lastEvent = ragEvents[ragEvents.length - 1];
+
+  return {
+    id: 'rag',
+    kind: 'rag',
+    component: 'RAG Retrieve',
+    summary: input.citations.length
+      ? `${input.citations.length} knowledge sources retrieved`
+      : 'Waiting for retrieval',
+    status: firstEvent ? 'success' : 'waiting',
+    duration: getDuration(firstEvent?.timestamp, lastEvent?.timestamp) ?? (firstEvent ? 0 : undefined),
+    startTime: firstEvent?.timestamp,
+    endTime: lastEvent?.timestamp,
+    input: firstEvent?.payload,
+    output: input.citations,
+    metadata: { citationCount: input.citations.length },
+    trace: ragEvents,
   };
 }
 
@@ -233,13 +315,28 @@ function buildEvaluationNode(input: ExecutionModelInput): ExecutionNodeRecord {
   };
 }
 
+function getWorkflowStatus(
+  input: ExecutionModelInput,
+  startTime?: number,
+  endTime?: number,
+): ExecutionNodeStatus {
+  if (input.status === 'cancelled') return 'cancelled';
+  if (input.status === 'error') return 'failed';
+  if (input.status === 'success' || input.status === 'completed') return 'success';
+  if (startTime && !endTime) return 'running';
+  if (startTime) return input.status === 'running' ? 'running' : 'success';
+  return 'waiting';
+}
+
 function getPlannerStatus(input: ExecutionModelInput): ExecutionNodeStatus {
+  if (input.status === 'cancelled') return 'cancelled';
   if (input.plan) return 'success';
   if (input.events.some((event) => event.type === 'plan_start')) return 'running';
   return 'waiting';
 }
 
 function getAnswerStatus(status: string, content?: string): ExecutionNodeStatus {
+  if (status === 'cancelled') return 'cancelled';
   if (status === 'error') return 'failed';
   if (content && status === 'running') return 'running';
   if (content) return 'success';

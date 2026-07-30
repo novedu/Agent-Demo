@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { Panel } from '../ui';
+import { Badge, Panel } from '../ui';
+import { classNames } from '../ui/classNames';
 import { ExecutionStatus } from './ExecutionStatus';
-import type { ExecutionNodeRecord } from './execution-model';
+import { getKindLabel, type ExecutionNodeRecord } from './execution-model';
 
 interface ExecutionTimelineProps {
   nodes: ExecutionNodeRecord[];
@@ -9,60 +10,78 @@ interface ExecutionTimelineProps {
   onSelectNode: (node: ExecutionNodeRecord) => void;
 }
 
-const timelineKinds = new Set(['planner', 'tool', 'memory', 'reflection', 'evaluation']);
+const timelineKinds = new Set([
+  'planner',
+  'workflow',
+  'tool',
+  'rag',
+  'memory',
+  'reflection',
+  'evaluation',
+  'answer',
+]);
 
 export function ExecutionTimeline({ nodes, activeNodeId, onSelectNode }: ExecutionTimelineProps) {
   const timelineNodes = nodes.filter((node) => timelineKinds.has(node.kind));
 
   return (
     <Panel
-      title="Timeline"
-      description="Horizontal runtime sequence with inferred start, end and duration."
-      bodyClassName="overflow-x-auto"
+      title="Timeline Pro"
+      description="Runtime sequence with status, duration and progress by step."
+      bodyClassName="max-h-[360px] overflow-y-auto"
     >
-      <div className="flex min-w-max items-stretch gap-3">
+      <div className="space-y-0">
         {timelineNodes.map((node, index) => (
           <motion.button
             key={node.id}
             type="button"
             onClick={() => onSelectNode(node)}
-            className="group flex cursor-pointer items-stretch gap-3 text-left focus:outline-none focus:ring-2 focus:ring-accent/20"
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
+            className="group grid w-full cursor-pointer grid-cols-[28px_minmax(0,1fr)] text-left focus:outline-none focus:ring-2 focus:ring-accent/20"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, delay: index * 0.025 }}
           >
+            <div className="relative flex justify-center">
+              <span
+                className={classNames(
+                  'relative z-10 mt-4 h-3 w-3 rounded-full border-2 bg-white transition-colors duration-200',
+                  getDotClass(node.status),
+                )}
+              />
+              {index < timelineNodes.length - 1 && (
+                <span className="absolute bottom-0 top-7 w-px bg-lineStrong" />
+              )}
+            </div>
+
             <div
-              className={`w-56 rounded-lg border p-3 transition-colors duration-200 ${
+              className={classNames(
+                'mb-2 rounded-lg border p-3 transition-colors duration-200',
                 activeNodeId === node.id
                   ? 'border-accent bg-blue-50'
-                  : 'border-line bg-white group-hover:border-lineStrong group-hover:bg-panel'
-              }`}
+                  : 'border-line bg-white group-hover:border-lineStrong group-hover:bg-panel',
+              )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-normal text-muted">
-                    {node.kind}
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <EventBadge kind={node.kind} />
+                    <div className="truncate text-sm font-semibold text-ink">{node.component}</div>
                   </div>
-                  <div className="mt-1 truncate text-sm font-semibold text-ink">
-                    {node.component}
-                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{node.summary}</p>
                 </div>
-                <ExecutionStatus status={node.status} />
+                <div className="flex items-start gap-2 lg:justify-end">
+                  <ExecutionStatus status={node.status} />
+                  <Badge tone="neutral" className="font-mono">
+                    {formatDuration(node.duration, node.status)}
+                  </Badge>
+                </div>
               </div>
-              <dl className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
-                <Metric label="duration" value={formatDuration(node.duration)} />
-                <Metric label="start" value={formatTime(node.startTime)} />
-                <Metric label="end" value={formatTime(node.endTime)} />
-              </dl>
+              <div className="mt-3 flex items-center gap-3 text-[11px] text-muted">
+                <span>{getKindLabel(node.kind)}</span>
+                <span>Start {formatTime(node.startTime)}</span>
+                <span>End {formatTime(node.endTime)}</span>
+              </div>
             </div>
-            {index < timelineNodes.length - 1 && (
-              <motion.div
-                className="mt-10 h-px w-8 bg-lineStrong"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.2, delay: index * 0.03 }}
-              />
-            )}
           </motion.button>
         ))}
       </div>
@@ -70,16 +89,33 @@ export function ExecutionTimeline({ nodes, activeNodeId, onSelectNode }: Executi
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded bg-panel p-2">
-      <dt className="text-muted">{label}</dt>
-      <dd className="mt-1 font-mono text-ink">{value}</dd>
-    </div>
-  );
+function EventBadge({ kind }: { kind: ExecutionNodeRecord['kind'] }) {
+  const label = getKindLabel(kind);
+  const tone = getBadgeTone(kind);
+  return <Badge tone={tone}>{label}</Badge>;
 }
 
-function formatDuration(duration?: number): string {
+function getBadgeTone(
+  kind: ExecutionNodeRecord['kind'],
+): 'neutral' | 'info' | 'success' | 'warning' | 'danger' {
+  if (kind === 'planner' || kind === 'llm') return 'info';
+  if (kind === 'tool') return 'warning';
+  if (kind === 'rag') return 'success';
+  if (kind === 'memory') return 'neutral';
+  if (kind === 'reflection' || kind === 'evaluation') return 'info';
+  return 'success';
+}
+
+function getDotClass(status: ExecutionNodeRecord['status']): string {
+  if (status === 'success') return 'border-emerald-500';
+  if (status === 'running') return 'border-blue-500 ring-4 ring-blue-100';
+  if (status === 'failed') return 'border-rose-500';
+  if (status === 'cancelled') return 'border-amber-500';
+  return 'border-slate-300';
+}
+
+function formatDuration(duration: number | undefined, status: ExecutionNodeRecord['status']): string {
+  if (status === 'running') return duration === undefined ? 'Streaming...' : `${duration}ms`;
   return duration === undefined ? '-' : `${duration}ms`;
 }
 

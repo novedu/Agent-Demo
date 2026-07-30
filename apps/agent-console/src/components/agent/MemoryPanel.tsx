@@ -1,11 +1,12 @@
 import type { MemoryRecord } from '../../types/agent';
-import { Badge, Panel } from '../ui';
+import { Badge, Panel, Skeleton } from '../ui';
 
 interface MemoryPanelProps {
   memories: MemoryRecord[];
+  isLoading?: boolean;
 }
 
-export function MemoryPanel({ memories }: MemoryPanelProps) {
+export function MemoryPanel({ memories, isLoading }: MemoryPanelProps) {
   const groups: Array<{ label: string; type: MemoryRecord['type']; description: string }> = [
     { label: 'Working', type: 'working', description: '当前任务' },
     { label: 'Episodic', type: 'episodic', description: '历史任务' },
@@ -14,6 +15,9 @@ export function MemoryPanel({ memories }: MemoryPanelProps) {
 
   return (
     <Panel title="Memory" description="Working, episodic and semantic memory">
+      {isLoading && memories.length === 0 ? (
+        <Skeleton lines={6} />
+      ) : (
       <div className="space-y-3">
         {groups.map((group) => {
           const items = memories.filter((memory) => memory.type === group.type);
@@ -45,6 +49,7 @@ export function MemoryPanel({ memories }: MemoryPanelProps) {
           );
         })}
       </div>
+      )}
     </Panel>
   );
 }
