@@ -59,7 +59,7 @@ export class OpenAIProvider implements LLMProvider {
       body: JSON.stringify({
         model: this.model,
         messages: requestMessages,
-        ...(tools.length > 0 ? { tools, tool_choice: 'auto' } : {}),
+        ...(tools.length > 0 ? { tools: tools.map(toOpenAIToolDefinition), tool_choice: 'auto' } : {}),
         ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
       }),
     });
@@ -133,4 +133,11 @@ export class OpenAIProvider implements LLMProvider {
       };
     });
   }
+}
+
+function toOpenAIToolDefinition(tool: ToolDefinition): Omit<ToolDefinition, 'risk'> {
+  return {
+    type: tool.type,
+    function: tool.function,
+  };
 }

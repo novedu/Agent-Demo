@@ -1,4 +1,5 @@
 import type { AgentRuntimePort, AgentServerEvent, TaskCompletePayload } from '../types/api';
+import type { UserContext } from '../../security/permission-types';
 import type { TaskRepository } from './task-repository';
 import type { TaskEventPublisher, TaskRecord, TaskRuntimeHandle } from './task-types';
 
@@ -20,8 +21,8 @@ export class TaskManager {
     this.publishEvent = config.publishEvent;
   }
 
-  createTask(input: string): TaskRecord {
-    const task = this.repository.create({ input });
+  createTask(input: string, userContext?: UserContext): TaskRecord {
+    const task = this.repository.create({ input, userContext });
     this.publish('task_created', task.taskId, {
       taskId: task.taskId,
       input: task.input,
@@ -54,6 +55,7 @@ export class TaskManager {
       .runTask({
         taskId,
         input: task.input,
+        userContext: task.userContext,
         signal: controller.signal,
         emit: (event) => this.handleRuntimeEvent(event),
       })
@@ -267,6 +269,16 @@ export class TaskManager {
           status: 'failed',
           progress: 100,
           lastError: payload.error?.message ?? 'Tool execution failed',
+        });
+        break;
+      }
+      case 'permission_denied':
+      case 'tool_blocked':
+      case 'approval_required': {
+        const payload = event.payload as { toolName?: string; reason?: string };
+        this.repository.update(event.taskId, {
+          currentStep: payload.toolName ?? event.type,
+          lastError: payload.reason,
         });
         break;
       }

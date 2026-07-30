@@ -47,6 +47,9 @@ export function ExecutionTimeline({ events }: ExecutionTimelineProps) {
 function getTimelineLabel(type: WorkflowEvent['type']): string {
   if (type === 'plan_start' || type === 'plan_update') return 'Planner';
   if (type === 'tool_start' || type === 'tool_success' || type === 'tool_error') return 'Tool';
+  if (type === 'permission_denied' || type === 'tool_blocked' || type === 'approval_required') {
+    return 'Guardrail';
+  }
   if (type === 'rag_retrieve') return 'RAG';
   if (type === 'reflection') return 'Reflection';
   if (type === 'evaluation_start' || type === 'evaluation_complete') return 'Evaluation';
@@ -59,6 +62,9 @@ function getTimelineLabel(type: WorkflowEvent['type']): string {
 function getTimelineIcon(type: WorkflowEvent['type']): string {
   if (type === 'plan_start' || type === 'plan_update') return 'PL';
   if (type === 'tool_start' || type === 'tool_success' || type === 'tool_error') return 'FN';
+  if (type === 'permission_denied' || type === 'tool_blocked' || type === 'approval_required') {
+    return 'GR';
+  }
   if (type === 'rag_retrieve') return 'KG';
   if (type === 'reflection') return 'RF';
   if (type === 'evaluation_start' || type === 'evaluation_complete') return 'EV';

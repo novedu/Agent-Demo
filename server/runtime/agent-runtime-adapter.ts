@@ -9,6 +9,7 @@ import { TraceManager } from '../../observability/trace-manager';
 import type { EvaluationContext, TraceRecord } from '../../observability/trace-types';
 import { Planner } from '../../planner';
 import { ToolRegistry } from '../../registry';
+import { defaultUserContext, type ToolSecurityEventType, type UserContext } from '../../security/permission-types';
 import { ContextBuilder, KnowledgeBase, Retriever } from '../../src/knowledge';
 import { MockLLMProvider, OpenAIProvider, type LLMProvider } from '../../src/llm';
 import { registerTools } from '../../tools';
@@ -23,6 +24,7 @@ import type {
   ReflectionPayload,
   RuntimeTaskContext,
   StateUpdatePayload,
+  ToolSecurityPayload,
 } from '../types/api';
 
 export interface AgentRuntimeAdapterConfig {
@@ -91,7 +93,7 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
         });
         this.traceManager.recordSpan(span.end('failed', { error: error.message }));
       },
-    });
+    }, context.userContext);
     let finalAnswerStreamed = false;
 
     emitIfActive(context, eventFactory('plan_start', {
@@ -305,6 +307,21 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
       }));
     });
 
+    const emitSecurityEvent = (event: AgentEvent): void => {
+      const runtimeEvent = event as Extract<AgentEvent, { type: ToolSecurityEventType }>;
+      emitIfActive(context, eventFactory(runtimeEvent.type, {
+        toolName: runtimeEvent.toolName,
+        userContext: runtimeEvent.userContext,
+        risk: runtimeEvent.risk,
+        reason: runtimeEvent.reason,
+        approvalStatus: runtimeEvent.approvalStatus,
+      } satisfies ToolSecurityPayload));
+    };
+
+    eventEmitter.on('permission_denied', emitSecurityEvent);
+    eventEmitter.on('tool_blocked', emitSecurityEvent);
+    eventEmitter.on('approval_required', emitSecurityEvent);
+
     eventEmitter.on('llm_response', (event) => {
       const runtimeEvent = event as Extract<AgentEvent, { type: 'llm_response' }>;
       const llmSpan = activeSpans.get(`llm:${runtimeEvent.messageId}`);
@@ -336,7 +353,7 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
     });
   }
 
-  private createRuntimeBundle(plannerHooks: PlannerRuntimeHooks): RuntimeBundle {
+  private createRuntimeBundle(plannerHooks: PlannerRuntimeHooks, userContext?: UserContext): RuntimeBundle {
     const knowledgeBase = createKnowledgeBase();
     const retriever = new Retriever(knowledgeBase);
     const contextBuilder = new ContextBuilder();
@@ -344,7 +361,9 @@ export class AgentRuntimeAdapter implements AgentRuntimePort {
     const registry = new ToolRegistry();
     registerTools(registry, { retriever, contextBuilder });
 
-    const executor = new ToolExecutor(registry);
+    const executor = new ToolExecutor(registry, {
+      userContext: userContext ?? defaultUserContext,
+    });
     const conversationManager = new ConversationManager();
     const eventEmitter = new EventEmitter();
     const memoryManager = new MemoryManager();

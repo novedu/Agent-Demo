@@ -9,6 +9,7 @@ export class InMemoryTaskRepository implements TaskRepository {
     const task: TaskRecord = {
       taskId: createTaskId(),
       input: input.input,
+      userContext: input.userContext,
       status: 'queued',
       progress: 0,
       retryCount: 0,

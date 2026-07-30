@@ -1,4 +1,5 @@
 import type { AgentTrace } from '../../types';
+import type { UserContext } from '../../security/permission-types';
 import type { AgentServerEvent } from '../types/api';
 
 export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -6,6 +7,7 @@ export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancel
 export interface TaskRecord {
   taskId: string;
   input: string;
+  userContext?: UserContext;
   status: TaskStatus;
   currentStep?: string;
   progress: number;
@@ -22,6 +24,7 @@ export interface TaskRecord {
 
 export interface CreateTaskInput {
   input: string;
+  userContext?: UserContext;
   maxRetry?: number;
 }
 

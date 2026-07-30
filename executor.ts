@@ -1,5 +1,7 @@
 import type { ToolArgs, ArgsSchema, ToolResult, ToolDefinition } from './types';
 import { ToolRegistry } from './registry';
+import { defaultUserContext, type ApprovalStatus, type UserContext } from './security/permission-types';
+import { ToolGuard } from './security/tool-guard';
 
 export class ToolNotFoundError extends Error {
   constructor(toolName: string) {
@@ -22,14 +24,34 @@ export class ToolArgumentError extends Error {
   }
 }
 
+export interface ToolExecutorConfig {
+  toolGuard?: ToolGuard;
+  userContext?: UserContext;
+}
+
+export interface ToolRunOptions {
+  timeoutMs?: number;
+  userContext?: UserContext;
+  approvalStatus?: ApprovalStatus;
+}
+
 export class ToolExecutor {
-  constructor(private registry: ToolRegistry) {}
+  private toolGuard: ToolGuard;
+  private userContext: UserContext;
+
+  constructor(private registry: ToolRegistry, config: ToolExecutorConfig = {}) {
+    this.toolGuard = config.toolGuard ?? new ToolGuard();
+    this.userContext = config.userContext ?? defaultUserContext;
+  }
 
   getToolDefinitions(): ToolDefinition[] {
     return this.registry.getToolDefinitions();
   }
 
-  async run(name: string, args: ToolArgs, timeoutMs = 2000): Promise<ToolResult> {
+  async run(name: string, args: ToolArgs, optionsOrTimeout: ToolRunOptions | number = 2000): Promise<ToolResult> {
+    const options = normalizeRunOptions(optionsOrTimeout);
+    const timeoutMs = options.timeoutMs ?? 2000;
+    const userContext = options.userContext ?? this.userContext;
     const startedAt = Date.now();
 
     const tool = this.registry.get(name);
@@ -39,6 +61,29 @@ export class ToolExecutor {
         toolName: name,
         error: `Tool Not Found: "${name}" is not registered`,
         duration: Date.now() - startedAt,
+      };
+    }
+
+    const securityDecision = this.toolGuard.check({
+      toolName: name,
+      risk: tool.risk ?? 'low',
+      userContext,
+      approvalStatus: options.approvalStatus,
+    });
+
+    if (!securityDecision.allowed) {
+      return {
+        success: false,
+        toolName: name,
+        error: securityDecision.reason ?? `Tool "${name}" was blocked by guardrails`,
+        duration: Date.now() - startedAt,
+        approvalStatus: securityDecision.approvalStatus,
+        security: {
+          eventType: securityDecision.eventType ?? 'tool_blocked',
+          reason: securityDecision.reason ?? `Tool "${name}" was blocked by guardrails`,
+          risk: securityDecision.risk ?? tool.risk ?? 'low',
+          userContext,
+        },
       };
     }
 
@@ -114,4 +159,10 @@ export class ToolExecutor {
       throw new ToolArgumentError(toolName, typeErrors);
     }
   }
+}
+
+function normalizeRunOptions(optionsOrTimeout: ToolRunOptions | number): ToolRunOptions {
+  return typeof optionsOrTimeout === 'number'
+    ? { timeoutMs: optionsOrTimeout }
+    : optionsOrTimeout;
 }

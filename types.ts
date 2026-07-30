@@ -1,3 +1,10 @@
+import type {
+  ApprovalStatus,
+  ToolRiskLevel,
+  ToolSecurityEventType,
+  UserContext,
+} from './security/permission-types';
+
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 export type MessageStatus = 'pending' | 'streaming' | 'success' | 'error';
 
@@ -18,6 +25,7 @@ export interface ToolCall {
 
 export interface ToolDefinition {
   type: 'function';
+  risk: ToolRiskLevel;
   function: {
     name: string;
     description: string;
@@ -35,6 +43,13 @@ export interface ToolResult {
   data?: unknown;
   error?: string;
   duration: number;
+  approvalStatus?: ApprovalStatus;
+  security?: {
+    eventType: ToolSecurityEventType;
+    reason: string;
+    risk: ToolRiskLevel;
+    userContext: UserContext;
+  };
 }
 
 export interface RagTraceInfo {
@@ -63,6 +78,9 @@ export type AgentEventType =
   | 'tool_start'
   | 'tool_success'
   | 'tool_error'
+  | 'permission_denied'
+  | 'tool_blocked'
+  | 'approval_required'
   | 'agent_finish';
 
 export interface AgentEventBase<T extends AgentEventType> {
@@ -122,6 +140,16 @@ export interface ToolErrorEvent extends AgentEventBase<'tool_error'> {
   };
 }
 
+export interface ToolSecurityEvent extends AgentEventBase<ToolSecurityEventType> {
+  conversationId: string;
+  messageId: string;
+  toolName: string;
+  userContext: UserContext;
+  risk: ToolRiskLevel;
+  reason: string;
+  approvalStatus?: ApprovalStatus;
+}
+
 export interface AgentFinishEvent extends AgentEventBase<'agent_finish'> {
   conversationId: string;
   taskId: string;
@@ -137,6 +165,7 @@ export type AgentEvent =
   | ToolStartEvent
   | ToolSuccessEvent
   | ToolErrorEvent
+  | ToolSecurityEvent
   | AgentFinishEvent;
 
 export interface TraceStep {
@@ -219,6 +248,7 @@ export type ArgsSchema = Record<string, FieldSchema>;
 export interface Tool {
   name: string;
   description: string;
+  risk?: ToolRiskLevel;
   argsSchema?: ArgsSchema;
   execute: (args: ToolArgs) => Promise<ToolResult>;
 }

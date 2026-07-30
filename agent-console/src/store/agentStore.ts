@@ -178,6 +178,10 @@ function handleAgentEvent(set: StoreSet, get: StoreGet, event: AgentEvent): void
       upsertToolFromEvent(set, event, 'failed');
       set({ status: 'error', isStreaming: false });
       break;
+    case 'permission_denied':
+    case 'tool_blocked':
+    case 'approval_required':
+      break;
     case 'rag_retrieve':
       set({ citations: toCitations(event), memory: get().memory, memories: get().memories });
       break;
@@ -305,6 +309,7 @@ function toWorkflowEvent(event: AgentEvent): WorkflowEvent {
         toolName?: string;
         query?: string;
         error?: { message?: string };
+        reason?: string;
       }
     | undefined;
 
@@ -422,6 +427,9 @@ function getDefaultTitle(
   if (type === 'tool_start') return `${payload?.toolName ?? 'Tool'} started`;
   if (type === 'tool_success') return `${payload?.toolName ?? 'Tool'} success`;
   if (type === 'tool_error') return `${payload?.toolName ?? 'Tool'} error`;
+  if (type === 'permission_denied') return `${payload?.toolName ?? 'Tool'} permission denied`;
+  if (type === 'tool_blocked') return `${payload?.toolName ?? 'Tool'} blocked`;
+  if (type === 'approval_required') return `${payload?.toolName ?? 'Tool'} approval required`;
   if (type === 'rag_retrieve') return 'RAG retrieved context';
   if (type === 'reflection') return 'Reflection completed';
   if (type === 'memory_update') return 'Memory updated';
@@ -438,10 +446,13 @@ function getDefaultTitle(
 
 function getDefaultDetail(
   type: AgentEventType,
-  payload?: { toolName?: string; query?: string; error?: { message?: string } },
+  payload?: { toolName?: string; query?: string; error?: { message?: string }; reason?: string },
 ): string | undefined {
   if (type === 'rag_retrieve') return payload?.query;
   if (type === 'tool_error') return payload?.error?.message;
+  if (type === 'permission_denied' || type === 'tool_blocked' || type === 'approval_required') {
+    return payload?.reason;
+  }
   return undefined;
 }
 

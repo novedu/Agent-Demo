@@ -40,6 +40,7 @@ export class ToolRegistry {
 
       return {
         type: 'function',
+        risk: tool.risk ?? 'low',
         function: {
           name: tool.name,
           description: tool.description,
@@ -61,7 +62,7 @@ export class ToolRegistry {
               .map(([k, v]) => `${k}(${v.type}${v.required ? ',required' : ',optional'})`)
               .join(', ')
           : '';
-        return `- ${t.name}: ${t.description}${argsInfo}`;
+        return `- ${t.name}: ${t.description} | risk: ${t.risk ?? 'low'}${argsInfo}`;
       })
       .join('\n');
   }

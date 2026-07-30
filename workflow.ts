@@ -292,6 +292,7 @@ export class WorkflowRunner {
     traceStep.toolResult = toolResult;
     traceStep.duration = toolResult.duration;
     traceStep.rag = this.extractRagTrace(toolResult);
+    this.emitSecurityEventIfNeeded(input, toolName, toolResult);
     this.memoryManager?.recordToolResult(toolName, toolResult, {
       taskId: input.taskId,
       conversationId: input.conversationId,
@@ -401,6 +402,22 @@ export class WorkflowRunner {
     if (errorMessage.includes('Timeout')) return 'timeout';
     if (errorMessage.includes('Argument')) return 'argument';
     return 'execution';
+  }
+
+  private emitSecurityEventIfNeeded(input: WorkflowRunInput, toolName: string, toolResult: ToolResult): void {
+    if (!toolResult.security) return;
+
+    this.eventEmitter.emit({
+      type: toolResult.security.eventType,
+      timestamp: Date.now(),
+      conversationId: input.conversationId,
+      messageId: input.userMessageId,
+      toolName,
+      userContext: toolResult.security.userContext,
+      risk: toolResult.security.risk,
+      reason: toolResult.security.reason,
+      approvalStatus: toolResult.approvalStatus,
+    });
   }
 
   private extractRagTrace(toolResult: ToolResult) {

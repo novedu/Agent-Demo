@@ -6,7 +6,7 @@
   "scripts": {
     "server": "tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "tsx security/reliability-test.ts"
   },
   "keywords": [],
   "author": "",

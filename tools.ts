@@ -15,6 +15,7 @@ export function registerTools(registry: ToolRegistry, options: RegisterToolsOpti
   registry.register({
     name: 'calculator',
     description: '执行简单数学计算，支持 add/sub/mul/div',
+    risk: 'low',
     async execute(args) {
       const { op, a, b } = args as { op: string; a: number; b: number };
       await delay(50);
@@ -46,6 +47,7 @@ export function registerTools(registry: ToolRegistry, options: RegisterToolsOpti
   registry.register({
     name: 'getWeather',
     description: '查询指定城市的天气情况',
+    risk: 'low',
     argsSchema: {
       city: { type: 'string', required: true, description: '城市名称' },
     },
@@ -82,6 +84,7 @@ export function registerTools(registry: ToolRegistry, options: RegisterToolsOpti
   registry.register({
     name: 'slow_query',
     description: '模拟一个慢查询（会触发超时）',
+    risk: 'high',
     async execute(_args) {
       await delay(3000);
       return {
@@ -96,6 +99,7 @@ export function registerTools(registry: ToolRegistry, options: RegisterToolsOpti
   registry.register({
     name: 'querySalesData',
     description: '查询指定区域和月份的销售数据',
+    risk: 'medium',
     argsSchema: {
       region: { type: 'string', required: true, description: '销售区域（华东/华北/华南/西部）' },
       month: { type: 'string', required: true, description: '月份，格式 YYYY-MM' },
@@ -150,6 +154,7 @@ export function registerTools(registry: ToolRegistry, options: RegisterToolsOpti
   registry.register({
     name: 'searchKnowledge',
     description: '在知识库中检索相关文档',
+    risk: 'low',
     argsSchema: {
       query: { type: 'string', required: false, description: '用户问题或搜索语句' },
       keyword: { type: 'string', required: false, description: '兼容旧示例的搜索关键词' },
@@ -229,6 +234,7 @@ export function registerTools(registry: ToolRegistry, options: RegisterToolsOpti
   registry.register({
     name: 'calculateMetrics',
     description: '根据销售数据计算指标（同比、环比、占比等）',
+    risk: 'medium',
     argsSchema: {
       current: { type: 'number', required: true, description: '当前值' },
       previous: { type: 'number', required: true, description: '对比值' },

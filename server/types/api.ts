@@ -1,4 +1,5 @@
 import type { AgentTrace, Plan, PlanStep, ToolResult } from '../../types';
+import type { ApprovalStatus, ToolRiskLevel, UserContext } from '../../security/permission-types';
 import type { TaskRecord, TaskStatus } from '../task/task-types';
 
 export type AgentTaskStatus = TaskStatus;
@@ -10,6 +11,9 @@ export type AgentServerEventType =
   | 'tool_start'
   | 'tool_success'
   | 'tool_error'
+  | 'permission_denied'
+  | 'tool_blocked'
+  | 'approval_required'
   | 'rag_retrieve'
   | 'reflection'
   | 'memory_update'
@@ -32,6 +36,7 @@ export interface AgentServerEvent<TPayload = unknown> {
 
 export interface CreateAgentTaskRequest {
   input: string;
+  userContext?: UserContext;
 }
 
 export interface CreateAgentTaskResponse {
@@ -105,6 +110,14 @@ export interface ToolErrorPayload {
   };
 }
 
+export interface ToolSecurityPayload {
+  toolName: string;
+  userContext: UserContext;
+  risk: ToolRiskLevel;
+  reason: string;
+  approvalStatus?: ApprovalStatus;
+}
+
 export interface RagRetrievePayload {
   query: string;
   documents: Array<{
@@ -167,6 +180,7 @@ export type AgentEventSink = (event: AgentServerEvent) => void;
 export interface RuntimeTaskContext {
   taskId: string;
   input: string;
+  userContext?: UserContext;
   signal?: AbortSignal;
   emit: AgentEventSink;
 }
