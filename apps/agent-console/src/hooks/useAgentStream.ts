@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { createAgentTask, subscribeAgentEvents, type AgentEventSubscription } from '../services/agent';
+import {
+  createAgentTask,
+  subscribeAgentEvents,
+  type AgentEventSubscription,
+} from '../services/agent';
 import { useAgentStore } from '../store/agentStore';
 
 export function useAgentStream() {

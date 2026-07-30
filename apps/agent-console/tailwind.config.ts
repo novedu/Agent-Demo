@@ -5,10 +5,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: '#111827',
-        panel: '#f8fafc',
-        line: '#e2e8f0',
-        accent: '#2563eb',
+        ink: 'var(--studio-text)',
+        muted: 'var(--studio-text-muted)',
+        panel: 'var(--studio-surface-muted)',
+        surface: 'var(--studio-surface)',
+        line: 'var(--studio-border)',
+        lineStrong: 'var(--studio-border-strong)',
+        accent: 'var(--studio-primary)',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

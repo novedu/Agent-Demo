@@ -1,10 +1,7 @@
 import type { AgentServerEvent, AgentServerEventType } from '@shared-types/api';
 import type { EvaluationCriteria, EvaluationResult } from '@shared-types/trace';
 
-export type AgentEventType =
-  | AgentServerEventType
-  | 'workflow_start'
-  | 'replanning';
+export type AgentEventType = AgentServerEventType | 'workflow_start' | 'replanning';
 
 export type AgentEvent = Omit<AgentServerEvent, 'type'> & { type: AgentEventType };
 

@@ -1,66 +1,68 @@
+import { useMemo, useState } from 'react';
 import { ChatPanel } from '../../components/chat/ChatPanel';
-import { CitationPanel } from '../../components/agent/CitationPanel';
-import { ExecutionTimeline } from '../../components/agent/ExecutionTimeline';
-import { EvaluationPanel } from '../../components/agent/EvaluationPanel';
-import { KnowledgePanel } from '../../components/agent/KnowledgePanel';
-import { MemoryPanel } from '../../components/agent/MemoryPanel';
-import { PlanViewer } from '../../components/agent/PlanViewer';
-import { StateViewer } from '../../components/agent/StateViewer';
-import { ToolInspector } from '../../components/agent/ToolInspector';
+import {
+  ExecutionExplorer,
+  ExecutionTimeline,
+  RuntimeHeader,
+  StepDrawer,
+} from '../../components/execution';
+import {
+  buildExecutionNodes,
+  getCurrentNodeId,
+  getExecutionProgress,
+  type ExecutionNodeRecord,
+} from '../../components/execution/execution-model';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
 
 export function AgentConsole() {
   const { start } = useAgentStream();
-  const {
-    messages,
-    plan,
-    workflow,
-    tools,
-    citations,
-    memories,
-    evaluation,
-    state,
-    status,
-    isStreaming,
-  } = useAgentStore();
+  const { messages, plan, events, workflow, tools, citations, evaluation, status, isStreaming } =
+    useAgentStore();
+
+  const nodes = useMemo(
+    () =>
+      buildExecutionNodes({
+        plan,
+        tools,
+        events,
+        workflow,
+        citations,
+        evaluation,
+        messages,
+        status,
+      }),
+    [citations, evaluation, events, messages, plan, status, tools, workflow],
+  );
+  const currentNodeId = getCurrentNodeId(nodes);
+  const progress = getExecutionProgress(nodes);
+  const [selectedNode, setSelectedNode] = useState<ExecutionNodeRecord | undefined>();
+  const activeNodeId = selectedNode?.id ?? currentNodeId;
 
   return (
-    <main className="grid h-screen grid-cols-[360px_minmax(560px,1fr)_380px] bg-slate-100 text-ink">
-      <ChatPanel messages={messages} isStreaming={isStreaming} onSubmit={start} />
+    <main className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4 bg-[var(--studio-bg)] p-4 text-ink">
+      <RuntimeHeader
+        status={status}
+        progress={progress}
+        nodeCount={nodes.length}
+        activeNode={nodes.find((node) => node.id === currentNodeId)?.component}
+      />
 
-      <section className="min-h-0 overflow-y-auto p-4">
-        <div className="mb-4 flex items-center justify-between border-b border-line bg-white px-4 py-3">
-          <div>
-            <h1 className="text-base font-semibold text-ink">Agent Execution</h1>
-            <p className="text-xs text-slate-500">Plan, timeline, tool calls and runtime state</p>
-          </div>
-          <span className={`rounded px-2 py-1 text-xs font-medium ${getStatusTone(status)}`}>
-            {status}
-          </span>
+      <section className="grid min-h-0 gap-4 xl:grid-cols-[minmax(420px,0.95fr)_minmax(520px,1.15fr)]">
+        <div className="min-h-0 overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+          <ChatPanel messages={messages} isStreaming={isStreaming} onSubmit={start} />
         </div>
-
-        <div className="space-y-4">
-          <PlanViewer plan={plan ?? undefined} />
-          <ExecutionTimeline events={workflow} />
-          <ToolInspector tools={tools} />
-          <StateViewer state={state} />
+        <div className="min-h-0">
+          <ExecutionExplorer
+            nodes={nodes}
+            activeNodeId={activeNodeId}
+            onSelectNode={setSelectedNode}
+          />
         </div>
       </section>
 
-      <aside className="min-h-0 space-y-4 overflow-y-auto border-l border-line bg-panel p-4">
-        <KnowledgePanel citations={citations} />
-        <EvaluationPanel evaluation={evaluation} />
-        <MemoryPanel memories={memories} />
-        <CitationPanel citations={citations} />
-      </aside>
+      <ExecutionTimeline nodes={nodes} activeNodeId={activeNodeId} onSelectNode={setSelectedNode} />
+      <StepDrawer node={selectedNode} onClose={() => setSelectedNode(undefined)} />
     </main>
   );
-}
-
-function getStatusTone(status: string): string {
-  if (status === 'running') return 'bg-amber-100 text-amber-700';
-  if (status === 'success') return 'bg-emerald-100 text-emerald-700';
-  if (status === 'error') return 'bg-rose-100 text-rose-700';
-  return 'bg-slate-100 text-slate-600';
 }

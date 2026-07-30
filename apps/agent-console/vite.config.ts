@@ -1,13 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@console': new URL('./src', import.meta.url).pathname,
-      '@shared': new URL('../../packages/shared-utils/src', import.meta.url).pathname,
-      '@shared-types': new URL('../../packages/shared-types/src', import.meta.url).pathname,
+      '@console': fileURLToPath(new URL('./src', import.meta.url)),
+      '@shared': fileURLToPath(new URL('../../packages/shared-utils/src', import.meta.url)),
+      '@shared-types': fileURLToPath(new URL('../../packages/shared-types/src', import.meta.url)),
     },
   },
   server: {

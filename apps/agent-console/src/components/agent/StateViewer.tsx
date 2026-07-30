@@ -1,4 +1,5 @@
 import type { AgentStateSnapshot } from '../../types/agent';
+import { Panel, StatusTag } from '../ui';
 
 interface StateViewerProps {
   state?: AgentStateSnapshot;
@@ -6,41 +7,37 @@ interface StateViewerProps {
 
 export function StateViewer({ state }: StateViewerProps) {
   return (
-    <section className="rounded-md border border-line bg-white">
-      <header className="border-b border-line px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">State</h2>
-        <p className="text-xs text-slate-500">Current Agent runtime snapshot</p>
-      </header>
-      <div className="p-4">
-        {!state ? (
-          <p className="text-sm text-slate-500">No state snapshot yet.</p>
-        ) : (
-          <dl className="grid grid-cols-3 gap-3 text-sm">
-            <div className="rounded-md bg-panel p-3">
-              <dt className="text-xs text-slate-500">status</dt>
-              <dd className="mt-1 font-semibold text-ink">{state.status}</dd>
-            </div>
-            <div className="rounded-md bg-panel p-3">
-              <dt className="text-xs text-slate-500">currentStep</dt>
-              <dd className="mt-1 font-semibold text-ink">{state.currentStepId ?? '-'}</dd>
-            </div>
-            <div className="rounded-md bg-panel p-3">
-              <dt className="text-xs text-slate-500">completed</dt>
-              <dd className="mt-1 font-semibold text-ink">{state.completedStepIds.length}</dd>
-            </div>
-            <div className="col-span-3 rounded-md bg-panel p-3">
-              <dt className="text-xs text-slate-500">goal</dt>
-              <dd className="mt-1 text-sm font-medium text-ink">{state.goal}</dd>
-            </div>
-            <div className="col-span-3 rounded-md bg-panel p-3">
-              <dt className="text-xs text-slate-500">completedSteps</dt>
-              <dd className="mt-1 font-semibold text-ink">
-                {state.completedStepIds.join(', ') || '-'}
-              </dd>
-            </div>
-          </dl>
-        )}
-      </div>
-    </section>
+    <Panel title="State" description="Current Agent runtime snapshot">
+      {!state ? (
+        <p className="text-sm text-muted">No state snapshot yet.</p>
+      ) : (
+        <dl className="grid grid-cols-3 gap-3 text-sm">
+          <div className="rounded-md bg-panel p-3">
+            <dt className="text-xs text-muted">status</dt>
+            <dd className="mt-1">
+              <StatusTag status={state.status} />
+            </dd>
+          </div>
+          <div className="rounded-md bg-panel p-3">
+            <dt className="text-xs text-muted">currentStep</dt>
+            <dd className="mt-1 font-semibold text-ink">{state.currentStepId ?? '-'}</dd>
+          </div>
+          <div className="rounded-md bg-panel p-3">
+            <dt className="text-xs text-muted">completed</dt>
+            <dd className="mt-1 font-semibold text-ink">{state.completedStepIds.length}</dd>
+          </div>
+          <div className="col-span-3 rounded-md bg-panel p-3">
+            <dt className="text-xs text-muted">goal</dt>
+            <dd className="mt-1 text-sm font-medium text-ink">{state.goal}</dd>
+          </div>
+          <div className="col-span-3 rounded-md bg-panel p-3">
+            <dt className="text-xs text-muted">completedSteps</dt>
+            <dd className="mt-1 font-semibold text-ink">
+              {state.completedStepIds.join(', ') || '-'}
+            </dd>
+          </div>
+        </dl>
+      )}
+    </Panel>
   );
 }

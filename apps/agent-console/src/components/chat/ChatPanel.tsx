@@ -10,7 +10,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({ messages, isStreaming, onSubmit }: ChatPanelProps) {
   return (
-    <section className="flex min-h-0 flex-col border-r border-line bg-panel">
+    <section className="flex h-full min-h-0 flex-col bg-panel">
       <header className="border-b border-line bg-white px-4 py-3">
         <h2 className="text-sm font-semibold text-ink">Chat</h2>
         <p className="text-xs text-slate-500">User goals and Markdown responses</p>

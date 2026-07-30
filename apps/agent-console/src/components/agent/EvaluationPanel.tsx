@@ -1,4 +1,5 @@
 import type { EvaluationCriteria, EvaluationResult } from '../../types/agent';
+import { Panel } from '../ui';
 
 interface EvaluationPanelProps {
   evaluation?: EvaluationResult;
@@ -13,19 +14,15 @@ const criteriaLabels: Record<keyof EvaluationCriteria, string> = {
 
 export function EvaluationPanel({ evaluation }: EvaluationPanelProps) {
   return (
-    <section className="rounded-md border border-line bg-white">
-      <header className="border-b border-line px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">Evaluation</h2>
-        <p className="text-xs text-slate-500">Quality score and review feedback</p>
-      </header>
-      <div className="space-y-4 p-4">
+    <Panel title="Evaluation" description="Quality score and review feedback">
+      <div className="space-y-4">
         {!evaluation ? (
-          <p className="text-sm text-slate-500">No evaluation result yet.</p>
+          <p className="text-sm text-muted">No evaluation result yet.</p>
         ) : (
           <>
             <div>
               <div className="flex items-end justify-between">
-                <span className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+                <span className="text-xs font-semibold uppercase tracking-normal text-muted">
                   Score
                 </span>
                 <span className="text-2xl font-semibold text-ink">
@@ -44,7 +41,7 @@ export function EvaluationPanel({ evaluation }: EvaluationPanelProps) {
               {Object.entries(evaluation.criteria).map(([key, value]) => (
                 <div key={key}>
                   <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="text-slate-600">
+                    <span className="text-muted">
                       {criteriaLabels[key as keyof EvaluationCriteria]}
                     </span>
                     <span className="font-medium text-ink">{Math.round(value * 100)}%</span>
@@ -57,13 +54,13 @@ export function EvaluationPanel({ evaluation }: EvaluationPanelProps) {
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+              <div className="text-xs font-semibold uppercase tracking-normal text-muted">
                 Feedback
               </div>
               {evaluation.feedback.map((item, index) => (
                 <p
                   key={`${item}_${index}`}
-                  className="rounded border border-line bg-slate-50 p-2 text-xs text-slate-600"
+                  className="rounded border border-line bg-panel p-2 text-xs text-muted"
                 >
                   {item}
                 </p>
@@ -72,7 +69,7 @@ export function EvaluationPanel({ evaluation }: EvaluationPanelProps) {
           </>
         )}
       </div>
-    </section>
+    </Panel>
   );
 }
 

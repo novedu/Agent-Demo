@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { Button } from '@console/components/ui';
 
 interface InputBoxProps {
   disabled?: boolean;
@@ -27,13 +28,9 @@ export function InputBox({ disabled, onSubmit }: InputBoxProps) {
           placeholder="输入任务，例如：分析华东区域销售下降原因，并生成报告"
           className="min-h-20 flex-1 resize-none rounded-md border border-line px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 disabled:bg-panel"
         />
-        <button
-          type="submit"
-          disabled={disabled}
-          className="h-20 w-24 rounded-md bg-accent text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-        >
+        <Button type="submit" disabled={disabled} variant="primary" className="h-20 w-24">
           发送任务
-        </button>
+        </Button>
       </div>
     </form>
   );
