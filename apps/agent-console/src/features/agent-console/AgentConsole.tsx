@@ -1,10 +1,4 @@
 import { useMemo, useState } from 'react';
-import { EvaluationPanel } from '../../components/agent/EvaluationPanel';
-import { KnowledgePanel } from '../../components/agent/KnowledgePanel';
-import { MemoryPanel } from '../../components/agent/MemoryPanel';
-import { PlanViewer } from '../../components/agent/PlanViewer';
-import { StateViewer } from '../../components/agent/StateViewer';
-import { ToolInspector } from '../../components/agent/ToolInspector';
 import { ChatPanel } from '../../components/chat/ChatPanel';
 import {
   ExecutionEmptyState,
@@ -19,7 +13,7 @@ import {
   getExecutionProgress,
   type ExecutionNodeRecord,
 } from '../../components/execution/execution-model';
-import { Accordion } from '../../components/ui';
+import { RuntimeInspector } from '../../components/inspector';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
 
@@ -93,43 +87,19 @@ export function AgentConsole() {
               <ExecutionEmptyState onStart={() => start(defaultTask)} />
             )}
           </div>
-          <div className="min-h-0 overflow-y-auto">
-            <Accordion
-              defaultOpenId="state"
-              items={[
-                {
-                  id: 'state',
-                  title: 'State',
-                  children: <StateViewer state={state} />,
-                },
-                {
-                  id: 'plan',
-                  title: 'Plan',
-                  children: <PlanViewer plan={plan ?? undefined} isLoading={isLoading} />,
-                },
-                {
-                  id: 'tool',
-                  title: 'Tool',
-                  children: <ToolInspector tools={tools} isLoading={isLoading} />,
-                },
-                {
-                  id: 'knowledge',
-                  title: 'Knowledge',
-                  children: <KnowledgePanel citations={citations} isLoading={isLoading} />,
-                },
-                {
-                  id: 'memory',
-                  title: 'Memory',
-                  children: <MemoryPanel memories={memory} isLoading={isLoading} />,
-                },
-                {
-                  id: 'evaluation',
-                  title: 'Evaluation',
-                  children: <EvaluationPanel evaluation={evaluation} isLoading={isLoading} />,
-                },
-              ]}
-            />
-          </div>
+          <RuntimeInspector
+            currentNode={currentNode}
+            nodes={nodes}
+            events={events}
+            plan={plan}
+            state={state}
+            memory={memory}
+            citations={citations}
+            evaluation={evaluation}
+            tools={tools}
+            status={status}
+            isLoading={isLoading}
+          />
         </div>
       </section>
 
