@@ -24,7 +24,7 @@ export function Accordion({ items, defaultOpenId, focusId }: AccordionProps) {
   }, [focusId]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {items.map((item) => {
         const isOpen = item.id === openId;
 
@@ -33,16 +33,16 @@ export function Accordion({ items, defaultOpenId, focusId }: AccordionProps) {
             <button
               type="button"
               onClick={() => setOpenId(isOpen ? '' : item.id)}
-              className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-4 px-5 text-left transition-colors duration-200 hover:bg-panel focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent/20"
+              className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-4 px-4 text-left transition-colors duration-200 hover:bg-panel focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent/20"
             >
               <span className="truncate text-sm font-semibold text-ink">{item.title}</span>
               <span className="flex items-center gap-2 text-xs text-muted">
                 {item.meta}
                 <span
                   aria-hidden="true"
-                  className={classNames('transition-transform', isOpen && 'rotate-180')}
+                  className={classNames('font-mono transition-transform duration-200', isOpen && 'rotate-180')}
                 >
-                  v
+                  ^
                 </span>
               </span>
             </button>

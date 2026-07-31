@@ -16,6 +16,7 @@ import {
 } from '../../components/execution/execution-model';
 import type { AgentEvent, CitationRecord, MemoryRecord } from '../../types/agent';
 import { RuntimeInspector } from '../../components/inspector';
+import { Badge, Card, SparkIcon } from '../../components/ui';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
 
@@ -150,22 +151,25 @@ export function AgentConsole() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--studio-bg)] p-5 text-ink">
+    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-panel text-ink">
       <RuntimeHeader
         status={status}
         progress={progress}
         nodeCount={displayNodes.length}
         activeNode={activeNode?.component}
         currentStep={currentNode?.component}
+        currentTask={latestUserMessage?.content}
+        environment="local"
+        hasTaskActivity={hasTaskActivity}
         duration={runtimeMetrics.duration}
         tokenCount={runtimeMetrics.tokenCount}
         estimatedCost={runtimeMetrics.estimatedCost}
       />
 
-      <section className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-          <div className="min-h-0 flex-[0_0_60%] overflow-hidden rounded-xl border border-line bg-white">
-              <ChatPanel
+      <section className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
+          <div className="min-h-0 flex-[0_1_62%] overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <ChatPanel
               messages={messages}
               isStreaming={isStreaming}
               onSubmit={start}
@@ -176,33 +180,20 @@ export function AgentConsole() {
             />
           </div>
 
-          <div className="flex min-h-0 flex-[1_1_40%] gap-4 overflow-hidden">
-            <div className="min-h-0 min-w-0 flex-[0_1_70%] overflow-hidden">
-              {hasTaskActivity ? (
-                <ExecutionExplorer
-                  nodes={displayNodes}
-                  activeNodeId={activeNodeId}
-                  onSelectNode={handleGraphSelect}
-                />
-              ) : (
-                <ExecutionEmptyState onStart={() => start(defaultTask)} />
-              )}
-            </div>
-            <div className="min-h-0 min-w-[280px] flex-[0_0_30%] overflow-hidden">
-              {hasTaskActivity ? (
-                <ExecutionTimeline
-                  nodes={displayNodes}
-                  activeNodeId={activeNodeId}
-                  onSelectNode={handleTimelineSelect}
-                />
-              ) : (
-                <QuickStartPanel onStart={start} />
-              )}
-            </div>
+          <div className="min-h-0 flex-[1_1_38%] overflow-hidden">
+            {hasTaskActivity ? (
+              <ExecutionExplorer
+                nodes={displayNodes}
+                activeNodeId={activeNodeId}
+                onSelectNode={handleGraphSelect}
+              />
+            ) : (
+              <ExecutionEmptyState onStart={() => start(defaultTask)} />
+            )}
           </div>
         </div>
 
-        <div className="min-h-0 w-[360px] shrink-0 overflow-hidden">
+        <div className="hidden min-h-0 overflow-hidden lg:block">
           <RuntimeInspector
             currentNode={activeNode}
             nodes={displayNodes}
@@ -228,35 +219,68 @@ export function AgentConsole() {
         </div>
       </section>
 
+      <section className="h-[248px] shrink-0 border-t border-line bg-white p-4">
+        {hasTaskActivity ? (
+          <ExecutionTimeline
+            nodes={displayNodes}
+            activeNodeId={activeNodeId}
+            onSelectNode={handleTimelineSelect}
+          />
+        ) : (
+          <TimelineIdleState onStart={start} />
+        )}
+      </section>
+
       <StepDrawer node={selectedNode} onClose={() => setSelectedNode(undefined)} />
     </main>
   );
 }
 
-function QuickStartPanel({ onStart }: { onStart: (task: string) => void }) {
+function TimelineIdleState({ onStart }: { onStart: (task: string) => void }) {
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-white">
-      <header className="flex min-h-12 shrink-0 items-center border-b border-line px-5">
+    <Card className="flex h-full min-h-0 overflow-hidden">
+      <div className="flex min-w-[260px] shrink-0 flex-col justify-between border-r border-line bg-panel p-4">
         <div>
-          <div className="text-base font-semibold text-ink">Quick Start</div>
-          <p className="text-xs text-muted">Choose a scenario to run.</p>
+          <div className="flex items-center gap-2">
+            <SparkIcon className="h-4 w-4 text-accent" />
+            <h2 className="text-base font-semibold text-ink">Runtime Timeline</h2>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            No running task. Start from a template to stream timeline events here.
+          </p>
         </div>
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        <div className="grid gap-2">
+        <Badge tone="neutral">Ready</Badge>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {quickStartTasks.map((task) => (
             <button
               key={task.label}
               type="button"
               onClick={() => onStart(task.value)}
-              className="min-h-10 rounded-lg border border-line px-3 py-2 text-left text-sm font-medium text-ink transition-colors duration-200 hover:border-accent hover:bg-blue-50"
+              className="min-h-20 cursor-pointer rounded-xl border border-line bg-white p-4 text-left transition-colors duration-200 hover:border-blue-200 hover:bg-blue-50"
             >
-              {task.label}
+              <div className="text-sm font-semibold text-ink">{task.label}</div>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{task.value}</p>
             </button>
           ))}
         </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <EmptyMetric label="Recent Tasks" value="No active run" />
+          <EmptyMetric label="Templates" value="4 examples" />
+          <EmptyMetric label="Runtime" value="Connected" />
+        </div>
       </div>
-    </aside>
+    </Card>
+  );
+}
+
+function EmptyMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-panel p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-ink">{value}</div>
+    </div>
   );
 }
 

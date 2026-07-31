@@ -4,18 +4,21 @@
 
 :root {
   color-scheme: light;
-  --studio-bg: #f6f7fb;
+  --studio-bg: #f5f7fb;
   --studio-surface: #ffffff;
   --studio-surface-muted: #f8fafc;
   --studio-border: #e2e8f0;
   --studio-border-strong: #cbd5e1;
   --studio-text: #0f172a;
-  --studio-text-muted: #64748b;
+  --studio-text-muted: #475569;
   --studio-primary: #1d4ed8;
   --studio-primary-soft: #dbeafe;
   --studio-success: #059669;
   --studio-warning: #d97706;
   --studio-danger: #dc2626;
+  --studio-memory: #7c3aed;
+  --studio-knowledge: #ca8a04;
+  --studio-evaluation: #0f766e;
 }
 
 :root.dark {
@@ -32,6 +35,9 @@
   --studio-success: #34d399;
   --studio-warning: #fbbf24;
   --studio-danger: #fb7185;
+  --studio-memory: #c084fc;
+  --studio-knowledge: #fbbf24;
+  --studio-evaluation: #5eead4;
 }
 
 html,
@@ -55,6 +61,7 @@ body {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 * {

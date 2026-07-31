@@ -28,11 +28,11 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
     >
       <Card
         className={classNames(
-          'relative min-h-[118px] p-3 transition-colors duration-200',
+          'relative min-h-[112px] p-3 transition-colors duration-200',
           tone.border,
           tone.bg,
           active
-            ? 'shadow-[0_0_0_2px_rgba(29,78,216,0.18),0_18px_42px_rgba(29,78,216,0.2)] ring-2 ring-accent/20'
+            ? 'shadow-[0_0_0_2px_rgba(29,78,216,0.18),0_14px_32px_rgba(29,78,216,0.16)] ring-2 ring-accent/20'
             : 'hover:border-lineStrong hover:bg-panel',
         )}
       >
@@ -64,25 +64,21 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
 
 function formatDuration(duration?: number): string {
   if (duration === undefined) return 'pending';
-  return `${duration}ms`;
+  return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
 }
 
-function getNodeTone(status: ExecutionNodeRecord['status']): {
-  bg: string;
-  border: string;
-  badge: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
-} {
+function getNodeTone(status: ExecutionNodeRecord['status']): { bg: string; border: string } {
   if (status === 'success') {
-    return { bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'success' };
+    return { bg: 'bg-emerald-50', border: 'border-emerald-200' };
   }
   if (status === 'running') {
-    return { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'info' };
+    return { bg: 'bg-blue-50', border: 'border-blue-200' };
   }
   if (status === 'failed') {
-    return { bg: 'bg-rose-50', border: 'border-rose-200', badge: 'danger' };
+    return { bg: 'bg-rose-50', border: 'border-rose-200' };
   }
   if (status === 'cancelled') {
-    return { bg: 'bg-amber-50', border: 'border-amber-200', badge: 'warning' };
+    return { bg: 'bg-amber-50', border: 'border-amber-200' };
   }
-  return { bg: 'bg-white', border: 'border-line', badge: 'neutral' };
+  return { bg: 'bg-white', border: 'border-line' };
 }

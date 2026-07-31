@@ -5,11 +5,16 @@ interface StatusTagProps {
 }
 
 export function StatusTag({ status }: StatusTagProps) {
-  return <Badge tone={getTone(status)}>{status}</Badge>;
+  return (
+    <Badge tone={getTone(status)} className="gap-1.5 font-mono uppercase">
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {status}
+    </Badge>
+  );
 }
 
 function getTone(status: string): 'neutral' | 'info' | 'success' | 'warning' | 'danger' {
-  if (status === 'running' || status === 'queued' || status === 'planning') return 'warning';
+  if (status === 'running' || status === 'queued' || status === 'planning') return 'info';
   if (status === 'success' || status === 'completed') return 'success';
   if (status === 'error' || status === 'failed' || status === 'cancelled') return 'danger';
   if (status === 'streaming') return 'info';

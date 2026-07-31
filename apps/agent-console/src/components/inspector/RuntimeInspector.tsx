@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Accordion, Badge, Card, JsonViewer, Skeleton } from '../ui';
+import { Accordion, Badge, Card, JsonViewer } from '../ui';
 import { getKindLabel, getStatusTone } from '../execution/execution-model';
 import { EvaluationDashboard } from './EvaluationDashboard';
 import { InspectorEmpty } from './InspectorEmpty';
@@ -29,18 +29,20 @@ export function RuntimeInspector({
   onCitationSelect,
   onTraceSelect,
 }: RuntimeInspectorProps) {
-  const focusedNode = focusedObject?.type === 'node' ? focusedObject.node : currentNode;
-  const defaultEvidence = getDefaultEvidenceSection(focusedObject?.type, focusSection, focusedNode?.kind);
+  const runtimeObject = focusedObject?.type === 'node' ? focusedObject.node : currentNode;
+  const focusType = focusedObject?.type ?? runtimeObject?.kind;
+  const defaultOpen = getDefaultOpenSection(focusType, focusSection);
+  const runtimeMetrics = readRuntimeMetrics(events);
 
   return (
     <Card className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
-      <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b border-line bg-white px-5">
+      <header className="flex min-h-14 shrink-0 items-center justify-between gap-4 border-b border-line bg-white px-4">
         <div className="min-w-0">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-            Runtime Debugger
+            Runtime Inspector
           </div>
           <h2 className="mt-1 truncate text-base font-semibold leading-5 text-ink">
-            {focusedNode?.component ?? 'Inspector'}
+            {runtimeObject ? runtimeObject.component : 'Current Runtime Object'}
           </h2>
         </div>
         <Badge tone={status === 'error' ? 'danger' : status === 'running' ? 'info' : 'neutral'}>
@@ -52,56 +54,73 @@ export function RuntimeInspector({
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.18 }}
+        transition={{ duration: 0.2 }}
       >
         <div className="space-y-4">
-          <FocusedContext
-            node={focusedNode}
-            nodeCount={nodes.length}
-            eventCount={events.length}
-            toolCount={tools.length}
-            isLoading={isLoading}
-          />
+          {runtimeObject ? (
+            <section className="rounded-xl border border-line bg-white">
+              <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                    Current Runtime Object
+                  </div>
+                  <div className="mt-1 truncate text-sm font-semibold text-ink">
+                    {runtimeObject.component}
+                  </div>
+                </div>
+                <Badge tone={getStatusTone(runtimeObject.status)}>{runtimeObject.status}</Badge>
+              </header>
+              <div className="grid gap-2 p-4 md:grid-cols-2">
+                <Metric label="Type" value={getKindLabel(runtimeObject.kind)} />
+                <Metric label="Duration" value={formatDuration(runtimeObject.duration)} />
+                <Metric label="Retry" value={readMetric(runtimeObject.metadata, 'retryCount') ?? '0'} />
+                <Metric label="Token" value={readMetric(runtimeObject.metadata, 'tokenCount') ?? '0'} />
+                <Metric label="Cost" value={formatCost(runtimeMetrics.cost)} />
+                <Metric label="Step" value={`${nodes.length}`} />
+              </div>
+            </section>
+          ) : (
+            <InspectorEmpty
+              title="No focused runtime object"
+              description="Select a graph node, timeline row, citation, memory record or trace span to inspect it here."
+            />
+          )}
 
           <Accordion
-            defaultOpenId={defaultEvidence}
-            focusId={defaultEvidence}
+            defaultOpenId={defaultOpen}
+            focusId={defaultOpen}
             items={[
               {
-                id: 'memory',
-                title: 'Memory',
-                meta: <Badge>{memory.length}</Badge>,
-                children: (
-                  <MemoryExplorer
-                    memories={memory}
-                    isLoading={isLoading}
-                    highlightedMemoryId={highlightedMemoryId}
-                    onSelectMemory={onMemorySelect}
-                  />
+                id: 'execution',
+                title: 'Execution',
+                meta: <Badge>{runtimeObject?.component ?? 'Idle'}</Badge>,
+                children: runtimeObject ? (
+                  <JsonViewer title="Execution Snapshot" value={runtimeObject} collapsed />
+                ) : (
+                  <InspectorEmpty title="No execution selected" description="Inspect current runtime execution here." />
                 ),
               },
               {
-                id: 'knowledge',
-                title: 'Knowledge',
-                meta: <Badge>{citations.length} chunks</Badge>,
-                children: (
-                  <KnowledgeExplorer
-                    citations={citations}
-                    isLoading={isLoading}
-                    highlightedCitationId={highlightedCitationId}
-                    onSelectCitation={onCitationSelect}
-                  />
-                ),
+                id: 'input',
+                title: 'Input',
+                meta: <Badge tone="info">JSON</Badge>,
+                children: <JsonViewer title="Input" value={runtimeObject?.input} collapsed />,
               },
               {
-                id: 'evaluation',
-                title: 'Evaluation',
-                meta: <Badge tone={evaluation ? 'success' : 'neutral'}>{evaluation ? 'Ready' : 'Pending'}</Badge>,
+                id: 'output',
+                title: 'Output',
+                meta: <Badge tone="success">Result</Badge>,
+                children: <JsonViewer title="Output" value={runtimeObject?.output} collapsed />,
+              },
+              {
+                id: 'reasoning',
+                title: 'Reasoning',
+                meta: <Badge tone="info">LLM</Badge>,
                 children: (
-                  <EvaluationDashboard
-                    evaluation={evaluation}
-                    isLoading={isLoading}
-                    onViewTrace={onEvaluationTrace}
+                  <JsonViewer
+                    title="Reasoning"
+                    value={getReasoning(runtimeObject, evaluation)}
+                    collapsed
                   />
                 ),
               },
@@ -115,6 +134,47 @@ export function RuntimeInspector({
                     isLoading={isLoading}
                     highlightedTraceId={highlightedTraceId}
                     onSelectEvent={onTraceSelect}
+                  />
+                ),
+              },
+              {
+                id: 'evidence',
+                title: 'Evidence',
+                meta: <Badge tone="warning">{citations.length} refs</Badge>,
+                children: (
+                  <KnowledgeExplorer
+                    citations={citations}
+                    isLoading={isLoading}
+                    highlightedCitationId={highlightedCitationId}
+                    onSelectCitation={onCitationSelect}
+                  />
+                ),
+              },
+              {
+                id: 'memory',
+                title: 'Memory',
+                meta: <Badge tone="neutral">{memory.length}</Badge>,
+                children: (
+                  <MemoryExplorer
+                    memories={memory}
+                    isLoading={isLoading}
+                    highlightedMemoryId={highlightedMemoryId}
+                    onSelectMemory={onMemorySelect}
+                  />
+                ),
+              },
+              {
+                id: 'evaluation',
+                title: 'Evaluation',
+                meta: <Badge tone={evaluation ? 'success' : 'neutral'}>{evaluation ? 'Ready' : 'Pending'}</Badge>,
+                children: (
+                  <EvaluationDashboard
+                    evaluation={evaluation}
+                    isLoading={isLoading}
+                    runtimeDuration={runtimeObject?.duration}
+                    runtimeTokens={runtimeMetrics.tokens}
+                    runtimeCost={runtimeMetrics.cost}
+                    onViewTrace={onEvaluationTrace}
                   />
                 ),
               },
@@ -142,92 +202,6 @@ export function RuntimeInspector({
   );
 }
 
-function FocusedContext({
-  node,
-  nodeCount,
-  eventCount,
-  toolCount,
-  isLoading,
-}: {
-  node: RuntimeInspectorProps['currentNode'];
-  nodeCount: number;
-  eventCount: number;
-  toolCount: number;
-  isLoading: boolean;
-}) {
-  if (isLoading && !node) return <Skeleton lines={8} />;
-  if (!node) {
-    return (
-      <InspectorEmpty
-        title="No focused runtime object"
-        description="Click a graph node, timeline row, citation, memory or trace to focus the debugger."
-      />
-    );
-  }
-
-  return (
-    <section className="overflow-hidden rounded-xl border border-line bg-white">
-      <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4">
-        <div className="min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-            Focused Runtime Object
-          </div>
-          <div className="mt-1 truncate text-sm font-semibold text-ink">{node.component}</div>
-        </div>
-        <Badge tone={getStatusTone(node.status)}>{node.status}</Badge>
-      </header>
-      <div className="space-y-3 p-4">
-        <div className="grid grid-cols-2 gap-2">
-          <Metric label="Component" value={getKindLabel(node.kind)} />
-          <Metric label="Duration" value={formatDuration(node.duration)} />
-          <Metric label="Retry" value={readMetric(node.metadata, 'retryCount') ?? '0'} />
-          <Metric label="Token" value={readToken(node.metadata)} />
-          <Metric label="Nodes" value={`${nodeCount}`} />
-          <Metric label="Events" value={`${eventCount}`} />
-        </div>
-
-        <ModeSpecific node={node} toolCount={toolCount} />
-      </div>
-    </section>
-  );
-}
-
-function ModeSpecific({
-  node,
-  toolCount,
-}: {
-  node: NonNullable<RuntimeInspectorProps['currentNode']>;
-  toolCount: number;
-}) {
-  if (node.kind === 'tool') {
-    return (
-      <div className="space-y-3">
-        <JsonViewer title="Arguments" value={node.arguments ?? node.input} collapsed />
-        <JsonViewer title="Output" value={node.output} collapsed />
-        <JsonViewer title="Metadata" value={{ ...node.metadata, toolCount }} collapsed />
-      </div>
-    );
-  }
-
-  if (node.kind === 'memory') {
-    return <JsonViewer title="Memory Payload" value={node.output ?? node.trace} collapsed />;
-  }
-
-  if (node.kind === 'reflection') {
-    return <JsonViewer title="Reflection Reasoning" value={node.output ?? node.trace} collapsed />;
-  }
-
-  if (node.kind === 'evaluation') {
-    return <JsonViewer title="Evaluation Feedback" value={node.output ?? node.metadata} collapsed />;
-  }
-
-  if (node.kind === 'rag') {
-    return <JsonViewer title="Retrieved Context" value={node.output ?? node.trace} collapsed />;
-  }
-
-  return <JsonViewer title="Runtime Payload" value={node.output ?? node.trace ?? node.input} collapsed />;
-}
-
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-lg border border-line bg-panel p-2.5">
@@ -239,17 +213,22 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function getDefaultEvidenceSection(
-  focusType?: string,
-  focusSection?: string,
-  nodeKind?: string,
-): string {
+function getDefaultOpenSection(focusType?: string, focusSection?: string): string {
   if (focusSection) return focusSection;
-  if (focusType === 'citation' || nodeKind === 'rag') return 'knowledge';
-  if (focusType === 'memory' || nodeKind === 'memory') return 'memory';
-  if (focusType === 'evaluation' || nodeKind === 'evaluation') return 'evaluation';
+  if (focusType === 'citation' || focusType === 'rag') return 'evidence';
+  if (focusType === 'memory') return 'memory';
+  if (focusType === 'evaluation') return 'evaluation';
   if (focusType === 'trace') return 'trace';
-  return 'trace';
+  if (focusType === 'log') return 'logs';
+  return 'execution';
+}
+
+function getReasoning(runtimeObject: RuntimeInspectorProps['currentNode'], evaluation?: RuntimeInspectorProps['evaluation']) {
+  if (!runtimeObject) return 'No focused runtime object.';
+  if (runtimeObject.kind === 'reflection') return runtimeObject.output ?? runtimeObject.trace;
+  if (runtimeObject.kind === 'evaluation') return evaluation?.feedback ?? runtimeObject.metadata;
+  if (runtimeObject.kind === 'tool') return runtimeObject.metadata?.reasoning ?? runtimeObject.trace;
+  return runtimeObject.metadata?.reasoning ?? runtimeObject.trace ?? runtimeObject.output;
 }
 
 function readMetric(metadata: Record<string, unknown> | undefined, key: string): string | undefined {
@@ -257,14 +236,33 @@ function readMetric(metadata: Record<string, unknown> | undefined, key: string):
   return typeof value === 'number' || typeof value === 'string' ? String(value) : undefined;
 }
 
-function readToken(metadata: Record<string, unknown> | undefined): string {
-  const usage = metadata?.usage;
-  const usageRecord = typeof usage === 'object' && usage !== null ? (usage as Record<string, unknown>) : {};
-  const value = usageRecord.total_tokens ?? usageRecord.totalTokens ?? metadata?.tokenCount ?? metadata?.tokens;
-  return typeof value === 'number' ? value.toLocaleString() : '-';
+function readRuntimeMetrics(events: RuntimeInspectorProps['events']) {
+  const tokens = events.reduce((sum, event) => sum + readTokenCount(event.payload), 0);
+  const timestamps = events.map((event) => event.timestamp).filter(Boolean);
+  const duration = timestamps.length >= 2 ? Math.max(...timestamps) - Math.min(...timestamps) : undefined;
+  const cost = tokens > 0 ? (tokens / 1000) * 0.002 : undefined;
+  return { tokens, duration, cost };
+}
+
+function readTokenCount(payload: unknown): number {
+  if (!payload || typeof payload !== 'object') return 0;
+  const record = payload as Record<string, unknown>;
+  const usage = record.usage;
+  if (usage && typeof usage === 'object') {
+    const usageRecord = usage as Record<string, unknown>;
+    const total = usageRecord.total_tokens ?? usageRecord.totalTokens;
+    return typeof total === 'number' ? total : 0;
+  }
+  const tokenCount = record.tokenCount ?? record.tokens;
+  return typeof tokenCount === 'number' ? tokenCount : 0;
 }
 
 function formatDuration(duration?: number): string {
   if (duration === undefined) return '-';
   return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
+}
+
+function formatCost(value?: number): string {
+  if (value === undefined) return '-';
+  return `$${value.toFixed(4)}`;
 }

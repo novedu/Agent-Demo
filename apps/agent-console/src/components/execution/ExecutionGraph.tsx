@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import type { PointerEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Panel } from '../ui';
+import { Button, CenterIcon, FitViewIcon, Panel, ZoomInIcon, ZoomOutIcon } from '../ui';
 import { ExecutionNode } from './ExecutionNode';
 import {
   getStatusColor,
@@ -20,8 +20,8 @@ interface GraphPoint {
   y: number;
 }
 
-const nodeWidth = 260;
-const nodeHeight = 122;
+const nodeWidth = 300;
+const nodeHeight = 116;
 
 export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionGraphProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -44,6 +44,12 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
     window.setTimeout(() => {
       activeRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     }, 40);
+  }
+
+  function fitView() {
+    setScale(0.88);
+    setOffset({ x: 0, y: 0 });
+    viewportRef.current?.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -70,20 +76,25 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
 
   return (
     <Panel
-      title="Runtime Execution Graph"
-      description={activeNode ? `Focused: ${activeNode.component}` : 'Zoom, pan and inspect runtime objects.'}
+      title="Runtime Graph"
+      description={activeNode ? `Current object: ${activeNode.component}` : 'Runtime dependency path.'}
       actions={
         <div className="flex shrink-0 items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setScale((value) => Math.max(0.72, value - 0.12))}>
-            -
+          <Button size="sm" variant="ghost" aria-label="Zoom out" onClick={() => setScale((value) => Math.max(0.72, value - 0.12))}>
+            <ZoomOutIcon className="h-4 w-4" />
           </Button>
           <span className="w-12 text-center font-mono text-xs text-muted">
             {Math.round(scale * 100)}%
           </span>
-          <Button size="sm" variant="ghost" onClick={() => setScale((value) => Math.min(1.35, value + 0.12))}>
-            +
+          <Button size="sm" variant="ghost" aria-label="Zoom in" onClick={() => setScale((value) => Math.min(1.35, value + 0.12))}>
+            <ZoomInIcon className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={fitView}>
+            <FitViewIcon className="h-4 w-4" />
+            Fit
           </Button>
           <Button size="sm" variant="secondary" onClick={centerCurrentStep}>
+            <CenterIcon className="h-4 w-4" />
             Center
           </Button>
         </div>
@@ -93,7 +104,7 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
     >
       <div
         ref={viewportRef}
-        className="h-full cursor-grab overflow-auto overscroll-contain bg-[radial-gradient(circle_at_1px_1px,#e2e8f0_1px,transparent_0)] bg-[length:22px_22px] active:cursor-grabbing"
+        className="h-full cursor-grab overflow-auto overscroll-contain bg-[radial-gradient(circle_at_1px_1px,#e2e8f0_1px,transparent_0)] bg-[length:24px_24px] active:cursor-grabbing"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -160,20 +171,20 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
 }
 
 function buildGraph(nodes: ExecutionNodeRecord[]): { points: GraphPoint[]; width: number; height: number } {
-  const lanes = [92, 390, 690];
+  const lanes = [96, 452];
   const points = nodes.map((node, index) => {
-    const laneIndex = index % 3;
+    const laneIndex = index % 2;
     return {
       node,
       x: lanes[laneIndex],
-      y: 72 + index * 156,
+      y: 56 + index * 136,
     };
   });
 
   return {
     points,
-    width: 1040,
-    height: Math.max(520, 160 + nodes.length * 156),
+    width: 860,
+    height: Math.max(440, 132 + nodes.length * 136),
   };
 }
 

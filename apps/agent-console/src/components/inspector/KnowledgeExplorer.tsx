@@ -36,16 +36,16 @@ export function KnowledgeExplorer({
           ref={citation.id === highlightedCitationId ? highlightedRef : undefined}
           onClick={() => onSelectCitation?.(citation)}
           className={classNames(
-            'cursor-pointer rounded-md border bg-panel p-3 transition-colors duration-200 hover:border-lineStrong hover:bg-white',
+            'cursor-pointer rounded-xl border bg-white p-3 transition-colors duration-200 hover:border-amber-200 hover:bg-amber-50/50',
             citation.id === highlightedCitationId
-              ? 'border-accent bg-blue-50 shadow-[0_0_0_2px_rgba(29,78,216,0.12)]'
+              ? 'border-amber-300 bg-amber-50 shadow-[0_0_0_2px_rgba(217,119,6,0.12)]'
               : 'border-line',
           )}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
-                Source
+                Knowledge Reference
               </div>
               <div className="mt-1 truncate text-xs font-semibold text-ink">{citation.source}</div>
             </div>
@@ -53,12 +53,13 @@ export function KnowledgeExplorer({
               {citation.score === undefined ? 'score -' : `score ${citation.score.toFixed(2)}`}
             </Badge>
           </div>
-          <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
-            Chunk {citation.chunk ?? '-'}
+          <div className="mt-3 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
+            <span>Chunk {citation.chunk ?? '-'}</span>
+            <span>Jump</span>
           </div>
-          <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-[11px] leading-5 text-slate-100">
+          <p className="mt-2 line-clamp-4 rounded-lg border border-line bg-panel p-3 text-xs leading-5 text-muted">
             {citation.content}
-          </pre>
+          </p>
         </article>
       ))}
     </div>

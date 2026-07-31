@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AgentConsole } from '../features/agent-console/AgentConsole';
 import { StudioLayout } from '../layout/StudioLayout';
 import { Dashboard } from '../pages/Dashboard';
@@ -12,6 +12,10 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
+        element: createElement(Navigate, { to: '/agent', replace: true }),
+      },
+      {
+        path: 'dashboard',
         element: createElement(Dashboard),
       },
       {

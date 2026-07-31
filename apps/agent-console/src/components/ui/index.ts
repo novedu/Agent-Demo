@@ -4,6 +4,7 @@ export { Badge } from './Badge';
 export { Button } from './Button';
 export { Card } from './Card';
 export { Divider } from './Divider';
+export * from './Icon';
 export { JsonViewer } from './JsonViewer';
 export { Panel } from './Panel';
 export { Skeleton } from './Skeleton';
