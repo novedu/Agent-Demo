@@ -7,6 +7,8 @@ import type { ConsoleMessage } from '../../types/agent';
 interface ChatPanelProps {
   messages: ConsoleMessage[];
   isStreaming: boolean;
+  currentStep?: string;
+  currentTool?: string;
   onSubmit: (value: string) => void;
   onStop?: () => void;
   onRegenerate?: () => void;
@@ -17,6 +19,8 @@ interface ChatPanelProps {
 export function ChatPanel({
   messages,
   isStreaming,
+  currentStep,
+  currentTool,
   onSubmit,
   onStop,
   onRegenerate,
@@ -61,6 +65,17 @@ export function ChatPanel({
           )}
         </div>
       </header>
+      <div className="border-b border-line bg-panel px-5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <RuntimeChip tone={isStreaming ? 'info' : 'neutral'} label={isStreaming ? 'Agent alive' : 'Agent ready'} />
+          <RuntimeChip tone="neutral" label={currentStep ? `Step · ${currentStep}` : 'Step · Waiting'} />
+          <RuntimeChip tone="success" label={currentTool ? `Tool · ${currentTool}` : 'Tool · None yet'} />
+          <RuntimeChip tone="warning" label="Knowledge" />
+          <RuntimeChip tone="neutral" label="Memory" />
+          <RuntimeChip tone="info" label="Reflection" />
+          <RuntimeChip tone="success" label="Answer" />
+        </div>
+      </div>
       <div
         ref={messageViewportRef}
         onScroll={handleScroll}
@@ -87,5 +102,33 @@ export function ChatPanel({
       )}
       <InputBox disabled={isStreaming} onSubmit={onSubmit} onStop={onStop} />
     </section>
+  );
+}
+
+function RuntimeChip({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+}) {
+  const toneClass =
+    tone === 'success'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : tone === 'warning'
+        ? 'border-amber-200 bg-amber-50 text-amber-700'
+        : tone === 'danger'
+          ? 'border-rose-200 bg-rose-50 text-rose-700'
+          : tone === 'info'
+            ? 'border-blue-200 bg-blue-50 text-blue-700'
+            : 'border-line bg-white text-muted';
+
+  return (
+    <span
+      className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-[11px] font-medium transition-colors duration-200 ${toneClass}`}
+    >
+      {tone === 'info' && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
+      {label}
+    </span>
   );
 }

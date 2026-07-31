@@ -16,18 +16,10 @@ import {
 } from '../../components/execution/execution-model';
 import type { AgentEvent, CitationRecord, MemoryRecord } from '../../types/agent';
 import { RuntimeInspector } from '../../components/inspector';
-import { Badge, Card, SparkIcon } from '../../components/ui';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
 
 const defaultTask = '分析华东区域销售下降原因，并生成报告';
-
-const quickStartTasks = [
-  { label: '分析销售下降', value: '分析华东区域销售下降原因，并生成报告' },
-  { label: '总结日报', value: '总结今天的业务日报，并提炼风险点' },
-  { label: 'RAG QA', value: '公司的年假政策是什么' },
-  { label: 'Travel Planner', value: '帮我规划一个三天的上海出差行程' },
-];
 
 export function AgentConsole() {
   const { start, stop } = useAgentStream();
@@ -75,6 +67,12 @@ export function AgentConsole() {
   const activeNodeId = focusedNodeId ?? currentNodeId;
   const currentNode = displayNodes.find((node) => node.id === currentNodeId);
   const activeNode = displayNodes.find((node) => node.id === activeNodeId) ?? currentNode;
+  const currentTool =
+    currentNode?.kind === 'tool'
+      ? currentNode.component
+      : activeNode?.kind === 'tool'
+        ? activeNode.component
+        : undefined;
   const isLoading = status === 'running';
   const runtimeMetrics = getRuntimeMetrics(displayNodes, events);
 
@@ -155,8 +153,8 @@ export function AgentConsole() {
       <RuntimeHeader
         status={status}
         progress={progress}
-        nodeCount={displayNodes.length}
         activeNode={activeNode?.component}
+        currentTool={currentTool}
         currentStep={currentNode?.component}
         currentTask={latestUserMessage?.content}
         environment="local"
@@ -164,14 +162,17 @@ export function AgentConsole() {
         duration={runtimeMetrics.duration}
         tokenCount={runtimeMetrics.tokenCount}
         estimatedCost={runtimeMetrics.estimatedCost}
+        onStop={stop}
       />
 
-      <section className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
-          <div className="min-h-0 flex-[0_1_62%] overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <section className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="grid min-h-0 min-w-0 gap-4 overflow-hidden grid-rows-[minmax(0,1fr)_156px_208px]">
+          <div className="min-h-0 overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <ChatPanel
               messages={messages}
               isStreaming={isStreaming}
+              currentStep={currentNode?.component}
+              currentTool={currentTool}
               onSubmit={start}
               onStop={stop}
               onRegenerate={latestUserMessage ? () => start(latestUserMessage.content) : undefined}
@@ -180,7 +181,7 @@ export function AgentConsole() {
             />
           </div>
 
-          <div className="min-h-0 flex-[1_1_38%] overflow-hidden">
+          <div className="min-h-0 overflow-hidden">
             {hasTaskActivity ? (
               <ExecutionExplorer
                 nodes={displayNodes}
@@ -191,6 +192,12 @@ export function AgentConsole() {
               <ExecutionEmptyState onStart={() => start(defaultTask)} />
             )}
           </div>
+
+          <ExecutionTimeline
+            nodes={displayNodes}
+            activeNodeId={activeNodeId}
+            onSelectNode={handleTimelineSelect}
+          />
         </div>
 
         <div className="hidden min-h-0 overflow-hidden lg:block">
@@ -219,68 +226,8 @@ export function AgentConsole() {
         </div>
       </section>
 
-      <section className="h-[248px] shrink-0 border-t border-line bg-white p-4">
-        {hasTaskActivity ? (
-          <ExecutionTimeline
-            nodes={displayNodes}
-            activeNodeId={activeNodeId}
-            onSelectNode={handleTimelineSelect}
-          />
-        ) : (
-          <TimelineIdleState onStart={start} />
-        )}
-      </section>
-
       <StepDrawer node={selectedNode} onClose={() => setSelectedNode(undefined)} />
     </main>
-  );
-}
-
-function TimelineIdleState({ onStart }: { onStart: (task: string) => void }) {
-  return (
-    <Card className="flex h-full min-h-0 overflow-hidden">
-      <div className="flex min-w-[260px] shrink-0 flex-col justify-between border-r border-line bg-panel p-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <SparkIcon className="h-4 w-4 text-accent" />
-            <h2 className="text-base font-semibold text-ink">Runtime Timeline</h2>
-          </div>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            No running task. Start from a template to stream timeline events here.
-          </p>
-        </div>
-        <Badge tone="neutral">Ready</Badge>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {quickStartTasks.map((task) => (
-            <button
-              key={task.label}
-              type="button"
-              onClick={() => onStart(task.value)}
-              className="min-h-20 cursor-pointer rounded-xl border border-line bg-white p-4 text-left transition-colors duration-200 hover:border-blue-200 hover:bg-blue-50"
-            >
-              <div className="text-sm font-semibold text-ink">{task.label}</div>
-              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{task.value}</p>
-            </button>
-          ))}
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <EmptyMetric label="Recent Tasks" value="No active run" />
-          <EmptyMetric label="Templates" value="4 examples" />
-          <EmptyMetric label="Runtime" value="Connected" />
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function EmptyMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-panel p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-ink">{value}</div>
-    </div>
   );
 }
 

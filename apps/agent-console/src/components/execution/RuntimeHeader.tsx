@@ -5,8 +5,8 @@ import { ExecutionProgress } from './ExecutionProgress';
 interface RuntimeHeaderProps {
   status: string;
   progress: number;
-  nodeCount: number;
   activeNode?: string;
+  currentTool?: string;
   duration?: number;
   tokenCount?: number;
   estimatedCost?: number;
@@ -14,13 +14,14 @@ interface RuntimeHeaderProps {
   currentTask?: string;
   environment?: string;
   hasTaskActivity?: boolean;
+  onStop?: () => void;
 }
 
 export function RuntimeHeader({
   status,
   progress,
-  nodeCount,
   activeNode,
+  currentTool,
   duration,
   tokenCount,
   estimatedCost,
@@ -28,19 +29,20 @@ export function RuntimeHeader({
   currentTask,
   environment = 'local',
   hasTaskActivity = false,
+  onStop,
 }: RuntimeHeaderProps) {
   if (!hasTaskActivity || status === 'idle') {
     return (
       <HeaderShell
-        title="Workspace ready"
-        subtitle="No running task. Choose Quick Start or describe a goal in Chat."
+        title="Agent Studio Runtime"
+        subtitle="Ready for the next task. Chat is the primary workspace."
         status="ready"
         environment={environment}
       >
-        <StateCard label="Current Task" value="No running task" />
+        <StateCard label="Agent" value="Agent Runtime" />
+        <StateCard label="Model" value="MockLLM" />
         <StateCard label="Current Step" value="Ready" tone="info" />
-        <StateCard label="Progress" value="Quick Start" />
-        <StateCard label="Runtime" value="Connected" tone="success" />
+        <StateCard label="Runtime Status" value="Connected" tone="success" />
       </HeaderShell>
     );
   }
@@ -54,9 +56,8 @@ export function RuntimeHeader({
         environment={environment}
       >
         <StateCard label="Current Step" value={currentStep ?? activeNode ?? 'Failure'} tone="danger" />
-        <StateCard label="Duration" value={formatDuration(duration)} />
-        <StateCard label="Trace" value={`${nodeCount} objects`} />
-        <div className="flex min-w-0 gap-2">
+        <StateCard label="Current Tool" value={currentTool ?? 'Unavailable'} />
+        <div className="flex min-w-0 gap-2 md:col-span-2">
           <Button variant="secondary" className="h-10 flex-1">Retry</Button>
           <Button variant="ghost" className="h-10 flex-1">Logs</Button>
         </div>
@@ -75,7 +76,6 @@ export function RuntimeHeader({
         <StateCard label="Duration" value={formatDuration(duration)} />
         <StateCard label="Tokens" value={formatNumber(tokenCount)} />
         <StateCard label="Cost" value={formatCost(estimatedCost)} />
-        <StateCard label="Evaluation" value={`${progress}%`} tone="success" />
       </HeaderShell>
     );
   }
@@ -88,10 +88,15 @@ export function RuntimeHeader({
       environment={environment}
     >
       <StateCard label="Current Step" value={currentStep ?? activeNode ?? 'Planning'} tone="info" />
-      <StateCard label="Duration" value={formatDuration(duration)} />
-      <StateCard label="Tokens" value={formatNumber(tokenCount)} />
-      <div className="hidden min-w-[220px] shrink-0 xl:block">
-        <ExecutionProgress value={progress} currentStep={currentStep ?? activeNode} />
+      <StateCard label="Current Tool" value={currentTool ?? 'Resolving'} />
+      <StateCard label="Runtime Status" value="Running" tone="success" />
+      <div className="flex min-w-0 items-center gap-2 md:col-span-2 xl:col-span-1">
+        <Button variant="secondary" className="h-10 flex-1" onClick={onStop}>
+          Stop
+        </Button>
+        <div className="hidden min-w-[220px] shrink-0 xl:block">
+          <ExecutionProgress value={progress} currentStep={currentStep ?? activeNode} />
+        </div>
       </div>
     </HeaderShell>
   );
@@ -111,7 +116,7 @@ function HeaderShell({
   children: ReactNode;
 }) {
   return (
-    <header className="flex min-h-[88px] shrink-0 items-center gap-4 border-b border-line bg-white px-4">
+    <header className="flex min-h-[84px] shrink-0 items-center gap-4 border-b border-line bg-white px-4">
       <div className="flex min-w-[280px] items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-panel text-accent">
           <RuntimeIcon className="h-5 w-5" />

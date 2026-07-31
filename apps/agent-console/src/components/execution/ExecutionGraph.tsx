@@ -20,8 +20,10 @@ interface GraphPoint {
   y: number;
 }
 
-const nodeWidth = 300;
-const nodeHeight = 116;
+const nodeWidth = 168;
+const nodeHeight = 92;
+const graphHeight = 116;
+const gapX = 196;
 
 export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionGraphProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -77,7 +79,7 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
   return (
     <Panel
       title="Runtime Graph"
-      description={activeNode ? `Current object: ${activeNode.component}` : 'Runtime dependency path.'}
+      description={activeNode ? `Current object: ${activeNode.component}` : 'Runtime dependency strip.'}
       actions={
         <div className="flex shrink-0 items-center gap-2">
           <Button size="sm" variant="ghost" aria-label="Zoom out" onClick={() => setScale((value) => Math.max(0.72, value - 0.12))}>
@@ -171,28 +173,27 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
 }
 
 function buildGraph(nodes: ExecutionNodeRecord[]): { points: GraphPoint[]; width: number; height: number } {
-  const lanes = [96, 452];
+  const lanes = [12];
   const points = nodes.map((node, index) => {
-    const laneIndex = index % 2;
     return {
       node,
-      x: lanes[laneIndex],
-      y: 56 + index * 136,
+      x: 24 + index * gapX,
+      y: lanes[0],
     };
   });
 
   return {
     points,
-    width: 860,
-    height: Math.max(440, 132 + nodes.length * 136),
+    width: Math.max(760, 48 + Math.max(1, nodes.length) * gapX),
+    height: graphHeight,
   };
 }
 
 function getConnectorPath(from: GraphPoint, to: GraphPoint): string {
-  const startX = from.x + nodeWidth / 2;
-  const startY = from.y + nodeHeight;
-  const endX = to.x + nodeWidth / 2;
-  const endY = to.y;
-  const middleY = startY + Math.max(34, (endY - startY) / 2);
-  return `M ${startX} ${startY} C ${startX} ${middleY}, ${endX} ${middleY}, ${endX} ${endY}`;
+  const startX = from.x + nodeWidth;
+  const startY = from.y + nodeHeight / 2;
+  const endX = to.x;
+  const endY = to.y + nodeHeight / 2;
+  const middleX = startX + Math.max(48, (endX - startX) / 2);
+  return `M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}`;
 }

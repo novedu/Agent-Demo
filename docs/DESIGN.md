@@ -97,6 +97,46 @@ Type scale:
 
 Use only the shared spacing and radius scales defined in `DESIGN_SYSTEM.md`.
 
+## Runtime Density
+
+Agent Studio should feel dense because it is an engineering runtime workspace, but density must never reduce explainability.
+
+Density rules:
+
+- Chat remains the largest and calmest surface.
+- Runtime Graph is a compact visualization strip, not the primary workspace.
+- Timeline is a debug flow, not a dashboard table.
+- Inspector owns deep evidence, trace, memory, and evaluation details.
+- Metrics are contextual and should not turn the workspace into a KPI dashboard.
+
+Information should be layered:
+
+```text
+Primary: Chat and current runtime status
+Secondary: Runtime graph and flow timeline
+Deep detail: Inspector, drawer, evidence, logs
+```
+
+## Workspace Hierarchy
+
+Workspace hierarchy is fixed:
+
+```text
+Runtime Banner
+↓
+Chat Workspace
+↓
+Runtime Visualization Strip
+↓
+Debug Flow Timeline
+↓
+Status Bar
+```
+
+The right inspector is fixed and always describes the selected runtime object.
+
+Graph, Timeline, Evidence, Memory, Evaluation, and Logs must support the chat-led runtime experience. They must never compete with Chat as the primary workspace.
+
 ## Related Documents
 
 - `PRODUCT.md` for product positioning and screen blueprint

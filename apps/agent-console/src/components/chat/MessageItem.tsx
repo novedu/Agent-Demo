@@ -37,6 +37,7 @@ export function MessageItem({
 
         {!isUser && (
           <AssistantRuntimeSummary
+            message={message}
             evidenceOpen={evidenceOpen}
             onEvidenceToggle={() => {
               setEvidenceOpen((value) => !value);
@@ -122,26 +123,33 @@ function MessageHeader({ message, isUser }: { message: ConsoleMessage; isUser: b
 }
 
 function AssistantRuntimeSummary({
+  message,
   evidenceOpen,
   onEvidenceToggle,
 }: {
+  message: ConsoleMessage;
   evidenceOpen: boolean;
   onEvidenceToggle: () => void;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-panel p-2">
-      <Badge tone="info">Thinking</Badge>
-      <Badge tone="success">Tool Summary</Badge>
-      <Badge tone="warning">Citation</Badge>
-      <Badge tone="neutral">Evaluation</Badge>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="ml-auto h-7 px-2 text-[11px]"
-        onClick={onEvidenceToggle}
-      >
-        {evidenceOpen ? 'Hide Evidence' : 'Evidence'}
-      </Button>
+    <div className="mb-3 rounded-lg border border-line bg-panel p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+          Runtime Summary
+        </div>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={onEvidenceToggle}>
+          {evidenceOpen ? 'Hide Evidence' : 'Evidence'}
+        </Button>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-muted">
+        {summarizeAssistant(message.content)}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <Badge tone="info">Thinking</Badge>
+        <Badge tone="success">Tool Summary</Badge>
+        <Badge tone="warning">Citation</Badge>
+        <Badge tone="neutral">Evaluation</Badge>
+      </div>
     </div>
   );
 }
@@ -191,4 +199,9 @@ function formatTime(timestamp: number): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function summarizeAssistant(content: string): string {
+  if (!content.trim()) return 'The assistant is thinking through the runtime path.';
+  return content.length > 160 ? `${content.slice(0, 160).trim()}...` : content;
 }

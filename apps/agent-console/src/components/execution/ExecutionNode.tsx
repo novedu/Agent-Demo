@@ -28,7 +28,7 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
     >
       <Card
         className={classNames(
-          'relative min-h-[112px] p-3 transition-colors duration-200',
+          'relative min-h-[92px] p-3 transition-colors duration-200',
           tone.border,
           tone.bg,
           active
@@ -49,11 +49,11 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
           </Badge>
           <ExecutionStatus status={node.status} />
         </div>
-        <div className="mt-3">
+        <div className="mt-2">
           <div className="truncate text-sm font-semibold text-ink">{node.component}</div>
-          <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{node.summary}</p>
+          <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted">{node.summary}</p>
         </div>
-        <div className="mt-3 flex items-center justify-between text-[11px] text-muted">
+        <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
           <span>{getKindLabel(node.kind)}</span>
           <span>{formatDuration(node.duration)}</span>
         </div>
