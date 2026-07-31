@@ -1,0 +1,265 @@
+# Agent Studio UX Specification
+
+## Scope
+
+This document defines how users move through Agent Studio, how screens change state, and how runtime objects synchronize across the workspace.
+
+## Navigation Principle
+
+Default entry:
+
+```text
+/agent
+```
+
+Navigation priority:
+
+1. Agent Workspace
+2. Dashboard
+3. Knowledge
+4. Memory
+5. Evaluation
+6. Workflow
+7. Settings
+
+Workspace is the primary entry point because Agent Studio is runtime-first, not dashboard-first.
+
+## Screen Blueprint
+
+### Agent Workspace
+
+Purpose: run, observe, and debug one runtime task.
+
+Contains:
+
+- Chat
+- Runtime Header
+- Runtime Graph
+- Timeline
+- Inspector
+- Evidence Navigation
+
+### Dashboard
+
+Purpose: runtime overview.
+
+Contains:
+
+- Recent Tasks
+- Recent Failures
+- Average Evaluation
+- Runtime Metrics
+- Model Usage
+- Latest Memory
+- Recent Knowledge
+- Cost
+- Latency
+
+### Knowledge Center
+
+Purpose: inspect knowledge sources and retrieved evidence.
+
+Contains:
+
+- Documents
+- Chunks
+- Retriever
+- Embedding status
+- Citation search
+
+### Memory Center
+
+Purpose: inspect working, semantic, and episodic memory.
+
+Contains:
+
+- Working Memory
+- Semantic Memory
+- Episodic Memory
+- Memory Timeline
+- Memory Graph
+
+### Evaluation Center
+
+Purpose: review quality, regressions, and comparisons.
+
+Contains:
+
+- Leaderboard
+- Score trend
+- Evaluation history
+- Dataset
+- Regression review
+
+### Workflow Builder
+
+Purpose: future workflow authoring.
+
+Contains:
+
+- Planner graph
+- Workflow graph
+- Node and edge editing
+- Branch / loop preview
+
+### Settings
+
+Purpose: engineering configuration.
+
+Contains:
+
+- Model provider
+- Environment
+- Runtime config
+- Feature flags
+
+## Runtime State Model
+
+Every runtime interaction is driven by one selected runtime object.
+
+```text
+SelectedRuntimeObject
+```
+
+Possible values:
+
+- Planner
+- Workflow
+- Tool
+- Knowledge
+- Memory
+- Reflection
+- Evaluation
+- Answer
+- Trace
+- Log
+
+Any click in Graph, Timeline, Inspector, Drawer, Knowledge, Memory, Evaluation, Trace, or Logs must update this object.
+
+## Workspace Flow
+
+Workspace order:
+
+```text
+Chat
+↓
+Execution
+↓
+Evidence
+```
+
+Chat is always primary.
+Execution explains runtime behavior.
+Evidence supports interpretation and debugging.
+
+## Runtime UX States
+
+### Idle
+
+Goal: help the user start a task.
+
+Visible:
+
+- Welcome
+- Quick Start
+- Templates
+- Recent Tasks
+
+Hidden or de-emphasized:
+
+- Runtime Graph
+- Timeline
+- Detailed Inspector content
+
+### Running
+
+Goal: show active execution.
+
+Visible:
+
+- Streaming answer
+- Current step
+- Runtime Graph
+- Timeline
+- Inspector
+
+### Completed
+
+Goal: review the result.
+
+Visible:
+
+- Final answer
+- Evidence
+- Evaluation
+- Trace
+- Export
+
+### Failed
+
+Goal: debug and recover.
+
+Visible:
+
+- Failed step
+- Logs
+- Trace
+- Retry
+- Diagnostics
+
+## Interaction Rules
+
+- Timeline click updates the selected runtime object and highlights the matching graph node.
+- Graph click updates the selected runtime object and opens the drawer when needed.
+- Citation click scrolls and highlights the matching knowledge chunk.
+- Memory click highlights the related chat message.
+- Evaluation click opens the trace or the relevant runtime object.
+- Trace click should synchronize graph, timeline, drawer, and inspector.
+
+## Evidence Navigation
+
+Navigation must feel like a linked runtime debugger, not separate panels.
+
+```text
+Citation → Knowledge chunk
+Memory → Chat message
+Evaluation → Trace span
+Trace → Graph / Timeline / Drawer
+```
+
+## Loading and Empty States
+
+Idle and loading states must be intentional.
+
+- Never show generic "Loading..." text alone.
+- Use skeletons for panels.
+- Use welcome / quick start content for idle.
+- Avoid empty shells with no action.
+
+## Accessibility
+
+Required:
+
+- Keyboard navigation
+- Visible focus state
+- ESC close behavior for modal surfaces
+- ARIA labels
+- Reduced motion support
+- Predictable tab order
+
+## Responsive Behavior
+
+Supported breakpoints:
+
+```text
+1024 / 1200 / 1440 / 1600 / 1920
+```
+
+Rules:
+
+- No overlapping panels
+- No page-level scroll
+- No chat collapse
+- No double scroll regions
+- Graph and timeline must remain legible
+
