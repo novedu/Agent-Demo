@@ -20,17 +20,17 @@ export function Panel({
   ...props
 }: PanelProps) {
   return (
-    <Card className={classNames('overflow-hidden', className)} {...props}>
+    <Card className={classNames('flex min-h-0 flex-col overflow-hidden', className)} {...props}>
       {(title || description || actions) && (
-        <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+        <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b border-line px-5">
           <div className="min-w-0">
-            {title && <h2 className="truncate text-sm font-semibold text-ink">{title}</h2>}
-            {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
+            {title && <h2 className="truncate text-lg font-semibold leading-5 text-ink">{title}</h2>}
+            {description && <p className="mt-0.5 truncate text-xs text-muted">{description}</p>}
           </div>
           {actions}
         </header>
       )}
-      <div className={classNames('p-4', bodyClassName)}>{children}</div>
+      <div className={classNames('min-h-0 flex-1 p-5', bodyClassName)}>{children}</div>
     </Card>
   );
 }

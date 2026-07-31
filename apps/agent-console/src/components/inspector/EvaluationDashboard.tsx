@@ -1,10 +1,11 @@
 import type { EvaluationResult } from '../../types/agent';
-import { Badge, Skeleton } from '../ui';
+import { Badge, Button, Skeleton } from '../ui';
 import { InspectorEmpty } from './InspectorEmpty';
 
 interface EvaluationDashboardProps {
   evaluation?: EvaluationResult;
   isLoading: boolean;
+  onViewTrace?: () => void;
 }
 
 const criteria = [
@@ -14,7 +15,7 @@ const criteria = [
   ['taskCompletion', 'Task Completion'],
 ] as const;
 
-export function EvaluationDashboard({ evaluation, isLoading }: EvaluationDashboardProps) {
+export function EvaluationDashboard({ evaluation, isLoading, onViewTrace }: EvaluationDashboardProps) {
   if (isLoading && !evaluation) return <Skeleton lines={8} />;
   if (!evaluation) {
     return <InspectorEmpty title="No evaluation yet" description="Quality metrics appear after completion." />;
@@ -71,6 +72,9 @@ export function EvaluationDashboard({ evaluation, isLoading }: EvaluationDashboa
           </p>
         ))}
       </div>
+      <Button variant="ghost" size="sm" onClick={onViewTrace} className="w-full">
+        View related trace
+      </Button>
     </div>
   );
 }

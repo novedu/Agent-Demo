@@ -1,105 +1,140 @@
 import ReactMarkdown from 'react-markdown';
-import { Accordion, Badge, Panel } from '../ui';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Badge, JsonViewer } from '../ui';
+import { classNames } from '../ui/classNames';
 import type { ExecutionNodeRecord } from './execution-model';
-import type { ReactNode } from 'react';
 
 interface StepDetailProps {
   node: ExecutionNodeRecord;
 }
 
+type StepTab = 'overview' | 'input' | 'output' | 'reasoning' | 'trace' | 'metadata' | 'raw';
+
+const tabs: Array<{ id: StepTab; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'input', label: 'Input' },
+  { id: 'output', label: 'Output' },
+  { id: 'reasoning', label: 'Reasoning' },
+  { id: 'trace', label: 'Trace' },
+  { id: 'metadata', label: 'Metadata' },
+  { id: 'raw', label: 'Raw JSON' },
+];
+
 export function StepDetail({ node }: StepDetailProps) {
-  const sections = [
-    {
-      id: 'input',
-      title: 'Input',
-      meta: <Badge tone="neutral">JSON</Badge>,
-      children: <JsonBlock value={node.input} />,
-    },
-    {
-      id: 'arguments',
-      title: 'Arguments',
-      meta: <Badge tone="neutral">Tool</Badge>,
-      children: <JsonBlock value={node.arguments} />,
-    },
-    {
-      id: 'output',
-      title: 'Output',
-      meta: <Badge tone="success">Result</Badge>,
-      children: <SmartBlock value={node.output} />,
-    },
-    {
-      id: 'reasoning',
-      title: 'Reasoning',
-      meta: <Badge tone="info">LLM</Badge>,
-      children: <SmartBlock value={getReasoning(node)} />,
-    },
-    {
-      id: 'metadata',
-      title: 'Metadata',
-      meta: <Badge tone="neutral">JSON</Badge>,
-      children: <JsonBlock value={node.metadata} />,
-    },
-    {
-      id: 'trace',
-      title: 'Trace',
-      meta: <Badge tone="warning">Raw</Badge>,
-      children: <JsonBlock value={node.trace} />,
-    },
-  ];
+  const [activeTab, setActiveTab] = useState<StepTab>('overview');
+  const raw = useMemo(
+    () => ({
+      id: node.id,
+      kind: node.kind,
+      component: node.component,
+      summary: node.summary,
+      status: node.status,
+      duration: node.duration,
+      startTime: node.startTime,
+      endTime: node.endTime,
+      input: node.input,
+      arguments: node.arguments,
+      output: node.output,
+      metadata: node.metadata,
+      trace: node.trace,
+    }),
+    [node],
+  );
 
   return (
-    <div className="space-y-3">
-      <Panel title="Step Detail" description={`${node.component} / ${node.kind}`}>
-        <dl className="grid grid-cols-2 gap-3 text-xs">
-          <Detail label="Component" value={node.component} />
-          <Detail label="Status" value={<Badge>{node.status}</Badge>} />
-          <Detail label="Duration" value={formatDuration(node.duration)} />
-          <Detail label="Start" value={formatTime(node.startTime)} />
-          <Detail label="End" value={formatTime(node.endTime)} />
-          <Detail label="Summary" value={node.summary} wide />
-          <Detail label="Tool" value={getToolName(node)} />
-        </dl>
-      </Panel>
+    <div className="flex min-h-0 flex-col gap-4">
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={classNames(
+              'h-9 cursor-pointer rounded-lg border px-3 text-xs font-semibold transition-colors duration-200',
+              activeTab === tab.id
+                ? 'border-accent bg-blue-50 text-accent'
+                : 'border-line bg-white text-muted hover:border-lineStrong hover:text-ink',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      <Accordion items={sections} defaultOpenId="output" />
+      {activeTab === 'overview' && <Overview node={node} />}
+      {activeTab === 'input' && (
+        <JsonViewer title="Input" value={{ input: node.input, arguments: node.arguments }} />
+      )}
+      {activeTab === 'output' && <SmartBlock title="Output" value={node.output} />}
+      {activeTab === 'reasoning' && <SmartBlock title="Reasoning Summary" value={getReasoning(node)} />}
+      {activeTab === 'trace' && <JsonViewer title="Trace" value={node.trace} />}
+      {activeTab === 'metadata' && <JsonViewer title="Metadata" value={node.metadata} />}
+      {activeTab === 'raw' && <JsonViewer title="Raw Runtime Object" value={raw} />}
     </div>
   );
 }
 
-function Detail({ label, value, wide }: { label: string; value: ReactNode; wide?: boolean }) {
+function Overview({ node }: { node: ExecutionNodeRecord }) {
   return (
-    <div className={wide ? 'col-span-2 rounded-md bg-panel p-3' : 'rounded-md bg-panel p-3'}>
-      <dt className="text-muted">{label}</dt>
-      <dd className="mt-1 font-medium text-ink">{value}</dd>
+    <div className="space-y-4">
+      <div className="rounded-xl border border-line bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+              Focused Runtime Object
+            </div>
+            <h3 className="mt-2 truncate text-lg font-semibold text-ink">{node.component}</h3>
+            <p className="mt-1 text-sm leading-6 text-muted">{node.summary}</p>
+          </div>
+          <Badge tone={node.status === 'failed' ? 'danger' : node.status === 'success' ? 'success' : 'info'}>
+            {node.status}
+          </Badge>
+        </div>
+      </div>
+      <dl className="grid grid-cols-2 gap-3 text-xs">
+        <Detail label="Component" value={node.component} />
+        <Detail label="Kind" value={node.kind} />
+        <Detail label="Duration" value={formatDuration(node.duration)} />
+        <Detail label="Tool" value={getToolName(node)} />
+        <Detail label="Start" value={formatTime(node.startTime)} />
+        <Detail label="End" value={formatTime(node.endTime)} />
+      </dl>
     </div>
   );
 }
 
-function JsonBlock({ value }: { value: unknown }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <pre className="max-h-72 overflow-auto rounded-md bg-slate-950 p-3 text-xs leading-5 text-slate-100">
-      {formatJson(value)}
-    </pre>
+    <div className="min-w-0 rounded-lg border border-line bg-white p-3">
+      <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">{label}</dt>
+      <dd className="mt-1 truncate font-medium text-ink">{value}</dd>
+    </div>
   );
 }
 
-function SmartBlock({ value }: { value: unknown }) {
+function SmartBlock({ title, value }: { title: string; value: unknown }) {
   if (typeof value === 'string' && value.trim()) {
     return (
-      <div className="prose prose-sm max-w-none prose-p:my-2 prose-pre:rounded-md prose-pre:bg-slate-950 prose-pre:text-slate-100">
-        <ReactMarkdown>{value}</ReactMarkdown>
-      </div>
+      <section className="overflow-hidden rounded-lg border border-line bg-white">
+        <header className="flex min-h-10 items-center border-b border-line px-3 text-xs font-semibold text-ink">
+          {title}
+        </header>
+        <div className="prose prose-sm max-w-none p-4 prose-p:my-2 prose-pre:rounded-md prose-pre:bg-slate-950 prose-pre:text-slate-100">
+          <ReactMarkdown>{value}</ReactMarkdown>
+        </div>
+      </section>
     );
   }
 
-  return <JsonBlock value={value} />;
+  return <JsonViewer title={title} value={value} />;
 }
 
 function getReasoning(node: ExecutionNodeRecord): unknown {
   if (node.metadata && 'reasoning' in node.metadata) return node.metadata.reasoning;
   if (node.kind === 'reflection') return node.output;
   if (node.kind === 'evaluation') return node.metadata;
-  return 'No reasoning payload captured for this step.';
+  if (node.kind === 'tool') return node.trace;
+  return 'No reasoning payload captured for this runtime object.';
 }
 
 function getToolName(node: ExecutionNodeRecord): string {
@@ -108,14 +143,9 @@ function getToolName(node: ExecutionNodeRecord): string {
   return typeof toolName === 'string' ? toolName : node.component;
 }
 
-function formatJson(value: unknown): string {
-  if (value === undefined) return 'undefined';
-  if (typeof value === 'string') return value;
-  return JSON.stringify(value, null, 2);
-}
-
 function formatDuration(duration?: number): string {
-  return duration === undefined ? 'pending' : `${duration}ms`;
+  if (duration === undefined) return 'pending';
+  return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
 }
 
 function formatTime(timestamp?: number): string {

@@ -44,6 +44,14 @@ export interface ExecutionNodeRecord {
   trace?: unknown;
 }
 
+export type FocusedRuntimeObject =
+  | { type: 'node'; id: string; node: ExecutionNodeRecord }
+  | { type: 'citation'; id: string }
+  | { type: 'memory'; id: string }
+  | { type: 'evaluation'; id: string }
+  | { type: 'trace'; id: string; eventType?: string }
+  | { type: 'log'; id: string; eventType?: string };
+
 export interface ExecutionModelInput {
   plan: Plan | null;
   tools: ToolCallRecord[];
@@ -123,6 +131,24 @@ export function getKindLabel(kind: ExecutionNodeKind): string {
   if (kind === 'evaluation') return 'Evaluation';
   if (kind === 'llm') return 'LLM';
   return 'Answer';
+}
+
+export function getStatusTone(
+  status: ExecutionNodeStatus,
+): 'neutral' | 'info' | 'success' | 'warning' | 'danger' {
+  if (status === 'success') return 'success';
+  if (status === 'running') return 'info';
+  if (status === 'failed') return 'danger';
+  if (status === 'cancelled') return 'warning';
+  return 'neutral';
+}
+
+export function getStatusColor(status: ExecutionNodeStatus): string {
+  if (status === 'success') return '#059669';
+  if (status === 'running') return '#1d4ed8';
+  if (status === 'failed') return '#dc2626';
+  if (status === 'cancelled') return '#d97706';
+  return '#cbd5e1';
 }
 
 function buildPlannerNode(input: ExecutionModelInput): ExecutionNodeRecord {

@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MemoryRecord } from '../../types/agent';
 import { Badge, Skeleton } from '../ui';
+import { classNames } from '../ui/classNames';
 import { InspectorEmpty } from './InspectorEmpty';
 
 interface MemoryExplorerProps {
   memories: MemoryRecord[];
   isLoading: boolean;
+  highlightedMemoryId?: string;
+  onSelectMemory?: (memory: MemoryRecord) => void;
 }
 
 const groups: Array<{ type: MemoryRecord['type']; label: string; description: string }> = [
@@ -15,8 +18,22 @@ const groups: Array<{ type: MemoryRecord['type']; label: string; description: st
   { type: 'semantic', label: 'Semantic', description: 'Stable user preferences' },
 ];
 
-export function MemoryExplorer({ memories, isLoading }: MemoryExplorerProps) {
+export function MemoryExplorer({
+  memories,
+  isLoading,
+  highlightedMemoryId,
+  onSelectMemory,
+}: MemoryExplorerProps) {
   const [openType, setOpenType] = useState<MemoryRecord['type'] | ''>('working');
+  const highlightedRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const highlighted = memories.find((memory) => memory.id === highlightedMemoryId);
+    if (highlighted) setOpenType(highlighted.type);
+    window.setTimeout(() => {
+      highlightedRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 80);
+  }, [highlightedMemoryId, memories]);
 
   if (isLoading && memories.length === 0) return <Skeleton lines={7} />;
   if (memories.length === 0) {
@@ -53,13 +70,24 @@ export function MemoryExplorer({ memories, isLoading }: MemoryExplorerProps) {
                   <p className="px-1 py-2 text-xs text-muted">No records in this category.</p>
                 ) : (
                   items.map((memory) => (
-                    <article key={memory.id} className="rounded-md border border-line bg-white p-2.5">
+                    <button
+                      key={memory.id}
+                      ref={memory.id === highlightedMemoryId ? highlightedRef : undefined}
+                      type="button"
+                      onClick={() => onSelectMemory?.(memory)}
+                      className={classNames(
+                        'w-full rounded-md border bg-white p-2.5 text-left transition-colors duration-200 hover:border-accent hover:bg-blue-50',
+                        memory.id === highlightedMemoryId
+                          ? 'border-accent bg-blue-50 shadow-[0_0_0_2px_rgba(29,78,216,0.12)]'
+                          : 'border-line',
+                      )}
+                    >
                       <p className="text-xs leading-5 text-muted">{memory.content}</p>
                       <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted">
                         <span>importance {memory.importance}</span>
                         <span>{formatDate(memory.updatedAt)}</span>
                       </div>
-                    </article>
+                    </button>
                   ))
                 )}
               </motion.div>

@@ -1,8 +1,13 @@
-import { motion } from 'framer-motion';
-import { Badge, Panel } from '../ui';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
+import { Badge, JsonViewer, Panel } from '../ui';
 import { classNames } from '../ui/classNames';
 import { ExecutionStatus } from './ExecutionStatus';
-import { getKindLabel, type ExecutionNodeRecord } from './execution-model';
+import {
+  getKindLabel,
+  getStatusTone,
+  type ExecutionNodeRecord,
+} from './execution-model';
 
 interface ExecutionTimelineProps {
   nodes: ExecutionNodeRecord[];
@@ -22,104 +27,124 @@ const timelineKinds = new Set([
 ]);
 
 export function ExecutionTimeline({ nodes, activeNodeId, onSelectNode }: ExecutionTimelineProps) {
+  const [expandedId, setExpandedId] = useState<string>();
   const timelineNodes = nodes.filter((node) => timelineKinds.has(node.kind));
 
   return (
     <Panel
-      title="Timeline Pro"
-      description="Runtime sequence with status, duration and progress by step."
-      bodyClassName="max-h-[360px] overflow-y-auto"
+      title="Runtime Timeline"
+      description="DevTools style event stream."
+      className="h-full"
+      bodyClassName="overflow-y-auto overscroll-contain p-0"
     >
-      <div className="space-y-0">
-        {timelineNodes.map((node, index) => (
-          <motion.button
-            key={node.id}
-            type="button"
-            onClick={() => onSelectNode(node)}
-            className="group grid w-full cursor-pointer grid-cols-[28px_minmax(0,1fr)] text-left focus:outline-none focus:ring-2 focus:ring-accent/20"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, delay: index * 0.025 }}
-          >
-            <div className="relative flex justify-center">
-              <span
-                className={classNames(
-                  'relative z-10 mt-4 h-3 w-3 rounded-full border-2 bg-white transition-colors duration-200',
-                  getDotClass(node.status),
-                )}
-              />
-              {index < timelineNodes.length - 1 && (
-                <span className="absolute bottom-0 top-7 w-px bg-lineStrong" />
-              )}
-            </div>
+      <div className="min-w-[420px]">
+        <TimelineHeader />
+        <div className="divide-y divide-line">
+          {timelineNodes.map((node, index) => {
+            const isActive = node.id === activeNodeId;
+            const isExpanded = expandedId === node.id;
 
-            <div
-              className={classNames(
-                'mb-2 rounded-lg border p-3 transition-colors duration-200',
-                activeNodeId === node.id
-                  ? 'border-accent bg-blue-50'
-                  : 'border-line bg-white group-hover:border-lineStrong group-hover:bg-panel',
-              )}
-            >
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <EventBadge kind={node.kind} />
-                    <div className="truncate text-sm font-semibold text-ink">{node.component}</div>
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{node.summary}</p>
-                </div>
-                <div className="flex items-start gap-2 lg:justify-end">
+            return (
+              <motion.article
+                key={node.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, delay: index * 0.018 }}
+                className={classNames(
+                  'transition-colors duration-200',
+                  isActive ? 'bg-blue-50' : 'bg-white hover:bg-panel',
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectNode(node);
+                    setExpandedId(isExpanded ? undefined : node.id);
+                  }}
+                  className="grid min-h-14 w-full cursor-pointer grid-cols-[76px_72px_minmax(120px,1fr)_64px_72px_54px_64px] items-center gap-3 px-4 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent/20"
+                >
+                  <span className="font-mono text-[11px] text-muted">{formatTime(node.startTime)}</span>
+                  <Badge tone={getStatusTone(node.status)}>{getKindLabel(node.kind)}</Badge>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-ink">
+                      {node.component}
+                    </span>
+                    <span className="block truncate text-[11px] text-muted">{node.summary}</span>
+                  </span>
+                  <span className="font-mono text-[11px] text-muted">{formatDuration(node.duration)}</span>
                   <ExecutionStatus status={node.status} />
-                  <Badge tone="neutral" className="font-mono">
-                    {formatDuration(node.duration, node.status)}
-                  </Badge>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-3 text-[11px] text-muted">
-                <span>{getKindLabel(node.kind)}</span>
-                <span>Start {formatTime(node.startTime)}</span>
-                <span>End {formatTime(node.endTime)}</span>
-              </div>
-            </div>
-          </motion.button>
-        ))}
+                  <span className="font-mono text-[11px] text-muted">{readRetry(node)}</span>
+                  <span className="text-right font-mono text-[11px] text-muted">
+                    {readToken(node)}
+                  </span>
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      className="overflow-hidden border-t border-line bg-slate-50"
+                    >
+                      <div className="grid gap-3 p-4 xl:grid-cols-2">
+                        <JsonViewer title="Arguments" value={node.arguments ?? node.input} collapsed />
+                        <JsonViewer title="Output" value={node.output} collapsed />
+                        <JsonViewer title="Metadata" value={node.metadata} collapsed />
+                        <JsonViewer title="Trace" value={node.trace} collapsed />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.article>
+            );
+          })}
+        </div>
       </div>
     </Panel>
   );
 }
 
-function EventBadge({ kind }: { kind: ExecutionNodeRecord['kind'] }) {
-  const label = getKindLabel(kind);
-  const tone = getBadgeTone(kind);
-  return <Badge tone={tone}>{label}</Badge>;
+function TimelineHeader() {
+  return (
+    <div className="sticky top-0 z-10 grid min-h-10 grid-cols-[76px_72px_minmax(120px,1fr)_64px_72px_54px_64px] items-center gap-3 border-b border-line bg-white px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+      <span>Time</span>
+      <span>Badge</span>
+      <span>Component</span>
+      <span>Duration</span>
+      <span>Status</span>
+      <span>Retry</span>
+      <span className="text-right">Token</span>
+    </div>
+  );
 }
 
-function getBadgeTone(
-  kind: ExecutionNodeRecord['kind'],
-): 'neutral' | 'info' | 'success' | 'warning' | 'danger' {
-  if (kind === 'planner' || kind === 'llm') return 'info';
-  if (kind === 'tool') return 'warning';
-  if (kind === 'rag') return 'success';
-  if (kind === 'memory') return 'neutral';
-  if (kind === 'reflection' || kind === 'evaluation') return 'info';
-  return 'success';
+function formatDuration(duration?: number): string {
+  if (duration === undefined) return '-';
+  return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
 }
 
-function getDotClass(status: ExecutionNodeRecord['status']): string {
-  if (status === 'success') return 'border-emerald-500';
-  if (status === 'running') return 'border-blue-500 ring-4 ring-blue-100';
-  if (status === 'failed') return 'border-rose-500';
-  if (status === 'cancelled') return 'border-amber-500';
-  return 'border-slate-300';
+function readRetry(node: ExecutionNodeRecord): string {
+  const retry = node.metadata?.retryCount ?? node.metadata?.retry;
+  return typeof retry === 'number' ? `${retry}` : '0';
 }
 
-function formatDuration(duration: number | undefined, status: ExecutionNodeRecord['status']): string {
-  if (status === 'running') return duration === undefined ? 'Streaming...' : `${duration}ms`;
-  return duration === undefined ? '-' : `${duration}ms`;
+function readToken(node: ExecutionNodeRecord): string {
+  const usage = toRecord(node.metadata?.usage);
+  const token = usage.total_tokens ?? usage.totalTokens ?? node.metadata?.tokenCount ?? node.metadata?.tokens;
+  return typeof token === 'number' ? token.toLocaleString() : '-';
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }
 
 function formatTime(timestamp?: number): string {
-  if (!timestamp) return '-';
-  return new Date(timestamp).toLocaleTimeString();
+  if (!timestamp) return '--:--:--';
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }

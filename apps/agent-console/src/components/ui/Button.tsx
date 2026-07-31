@@ -15,7 +15,7 @@ const variantClass = {
 };
 
 const sizeClass = {
-  sm: 'h-8 px-3 text-xs',
+  sm: 'h-10 px-3 text-xs',
   md: 'h-10 px-4 text-sm',
 };
 
@@ -31,7 +31,7 @@ export function Button({
     <button
       type={type}
       className={classNames(
-        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:border-line disabled:bg-slate-100 disabled:text-slate-400',
+        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:border-line disabled:bg-slate-100 disabled:text-slate-400',
         variantClass[variant],
         sizeClass[size],
         className,

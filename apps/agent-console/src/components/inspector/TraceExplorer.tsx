@@ -1,16 +1,32 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AgentEvent } from '../../types/agent';
 import { Badge, Skeleton } from '../ui';
+import { classNames } from '../ui/classNames';
 import { InspectorEmpty } from './InspectorEmpty';
 
 interface TraceExplorerProps {
   events: AgentEvent[];
   isLoading: boolean;
+  highlightedTraceId?: string;
+  onSelectEvent?: (event: AgentEvent) => void;
 }
 
-export function TraceExplorer({ events, isLoading }: TraceExplorerProps) {
+export function TraceExplorer({
+  events,
+  isLoading,
+  highlightedTraceId,
+  onSelectEvent,
+}: TraceExplorerProps) {
   const [expandedId, setExpandedId] = useState<string>();
+  const highlightedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (highlightedTraceId) setExpandedId(highlightedTraceId);
+    window.setTimeout(() => {
+      highlightedRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 80);
+  }, [highlightedTraceId]);
 
   if (isLoading && events.length === 0) return <Skeleton lines={7} />;
   if (events.length === 0) {
@@ -23,14 +39,24 @@ export function TraceExplorer({ events, isLoading }: TraceExplorerProps) {
         const isExpanded = expandedId === event.id;
         const payload = toRecord(event.payload);
         return (
-          <div key={event.id} className="relative pl-5">
+          <div
+            key={event.id}
+            ref={event.id === highlightedTraceId ? highlightedRef : undefined}
+            className={classNames(
+              'relative rounded-md pl-5 transition-colors duration-200',
+              event.id === highlightedTraceId && 'bg-blue-50',
+            )}
+          >
             {index < list.length - 1 && (
               <span className="absolute bottom-0 left-1.5 top-5 w-px bg-lineStrong" />
             )}
             <span className="absolute left-0 top-2 h-3 w-3 rounded-full border-2 border-blue-400 bg-white" />
             <button
               type="button"
-              onClick={() => setExpandedId(isExpanded ? undefined : event.id)}
+              onClick={() => {
+                setExpandedId(isExpanded ? undefined : event.id);
+                onSelectEvent?.(event);
+              }}
               className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left transition-colors duration-200 hover:bg-panel"
             >
               <div className="min-w-0">

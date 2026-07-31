@@ -11,20 +11,20 @@ export function TopBar() {
   }, [isDark]);
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-line bg-white px-4">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 text-xs font-bold text-white">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-line bg-white px-5">
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-xs font-bold text-white">
           AS
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-ink">Agent Studio</div>
+          <div className="truncate text-lg font-semibold leading-5 text-ink">Agent Studio</div>
           <div className="text-xs text-muted">Enterprise AI Runtime Workspace</div>
         </div>
         <Divider orientation="vertical" className="mx-1 h-7" />
         <div className="hidden text-xs text-muted md:block">Environment: Local Dev</div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <div className="hidden items-center gap-2 md:flex">
           <span className="text-xs text-muted">Runtime</span>
           <StatusTag status={status} />

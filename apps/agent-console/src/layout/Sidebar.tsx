@@ -14,21 +14,21 @@ const navigation = [
 
 export function Sidebar() {
   return (
-    <aside className="flex min-h-0 w-64 shrink-0 flex-col border-r border-line bg-slate-950 text-slate-200">
-      <div className="border-b border-white/10 px-4 py-4">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <aside className="flex min-h-0 w-16 shrink-0 flex-col overflow-hidden border-r border-line bg-slate-950 text-slate-200 xl:w-64">
+      <div className="flex h-12 shrink-0 items-center border-b border-white/10 px-4 xl:px-5">
+        <div className="hidden text-xs font-semibold uppercase tracking-wide text-slate-400 xl:block">
           Studio Menu
         </div>
       </div>
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-4">
         {navigation.map((item) => (
           <NavLink key={item.path} to={item.path} end={item.path === '/'}>
             {({ isActive }) => (
               <motion.div
-                whileHover={{ x: 2 }}
+                whileHover={{ opacity: 0.92 }}
                 transition={{ duration: 0.15 }}
                 className={classNames(
-                  'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-200',
+                  'flex h-10 cursor-pointer items-center justify-center gap-3 rounded-xl px-3 text-sm transition-colors duration-200 xl:justify-start',
                   isActive
                     ? 'bg-white text-slate-950 shadow-sm'
                     : 'text-slate-300 hover:bg-white/10 hover:text-white',
@@ -42,13 +42,13 @@ export function Sidebar() {
                 >
                   {item.mark}
                 </span>
-                <span>{item.label}</span>
+                <span className="hidden truncate xl:inline">{item.label}</span>
               </motion.div>
             )}
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-white/10 p-3 text-xs text-slate-400">
+      <div className="hidden border-t border-white/10 p-4 text-xs text-slate-400 xl:block">
         Agent Runtime connected through SSE
       </div>
     </aside>

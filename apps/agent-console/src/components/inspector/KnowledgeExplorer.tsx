@@ -1,13 +1,28 @@
 import type { CitationRecord } from '../../types/agent';
 import { Badge, Skeleton } from '../ui';
+import { classNames } from '../ui/classNames';
 import { InspectorEmpty } from './InspectorEmpty';
+import { useEffect, useRef } from 'react';
 
 interface KnowledgeExplorerProps {
   citations: CitationRecord[];
   isLoading: boolean;
+  highlightedCitationId?: string;
+  onSelectCitation?: (citation: CitationRecord) => void;
 }
 
-export function KnowledgeExplorer({ citations, isLoading }: KnowledgeExplorerProps) {
+export function KnowledgeExplorer({
+  citations,
+  isLoading,
+  highlightedCitationId,
+  onSelectCitation,
+}: KnowledgeExplorerProps) {
+  const highlightedRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    highlightedRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [highlightedCitationId]);
+
   if (isLoading && citations.length === 0) return <Skeleton lines={7} />;
   if (citations.length === 0) {
     return <InspectorEmpty title="No retrieved chunks" description="RAG sources appear after retrieval." />;
@@ -18,7 +33,14 @@ export function KnowledgeExplorer({ citations, isLoading }: KnowledgeExplorerPro
       {citations.map((citation) => (
         <article
           key={citation.id}
-          className="rounded-md border border-line bg-panel p-3 transition-colors duration-200 hover:border-lineStrong hover:bg-white"
+          ref={citation.id === highlightedCitationId ? highlightedRef : undefined}
+          onClick={() => onSelectCitation?.(citation)}
+          className={classNames(
+            'cursor-pointer rounded-md border bg-panel p-3 transition-colors duration-200 hover:border-lineStrong hover:bg-white',
+            citation.id === highlightedCitationId
+              ? 'border-accent bg-blue-50 shadow-[0_0_0_2px_rgba(29,78,216,0.12)]'
+              : 'border-line',
+          )}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

@@ -1,7 +1,12 @@
 import { motion } from 'framer-motion';
-import { Panel } from '../ui';
+import type { PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Panel } from '../ui';
 import { ExecutionNode } from './ExecutionNode';
-import type { ExecutionNodeRecord } from './execution-model';
+import {
+  getStatusColor,
+  type ExecutionNodeRecord,
+} from './execution-model';
 
 interface ExecutionGraphProps {
   nodes: ExecutionNodeRecord[];
@@ -9,57 +14,174 @@ interface ExecutionGraphProps {
   onSelectNode: (node: ExecutionNodeRecord) => void;
 }
 
+interface GraphPoint {
+  node: ExecutionNodeRecord;
+  x: number;
+  y: number;
+}
+
+const nodeWidth = 260;
+const nodeHeight = 122;
+
 export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionGraphProps) {
-  const graphNodes = nodes;
-  const pathHeight = Math.max(0, graphNodes.length - 1) * 148;
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const dragStart = useRef<{ pointerX: number; pointerY: number; x: number; y: number }>();
+
+  const graph = useMemo(() => buildGraph(nodes), [nodes]);
+  const activeNode = nodes.find((node) => node.id === activeNodeId);
+
+  useEffect(() => {
+    if (!activeRef.current) return;
+    activeRef.current.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+  }, [activeNodeId]);
+
+  function centerCurrentStep() {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    window.setTimeout(() => {
+      activeRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+    }, 40);
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStart.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      x: offset.x,
+      y: offset.y,
+    };
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (!dragStart.current) return;
+    setOffset({
+      x: dragStart.current.x + event.clientX - dragStart.current.pointerX,
+      y: dragStart.current.y + event.clientY - dragStart.current.pointerY,
+    });
+  }
+
+  function handlePointerUp() {
+    dragStart.current = undefined;
+  }
 
   return (
     <Panel
-      title="Runtime Graph"
-      description="Read-only runtime path from planning to final answer."
+      title="Runtime Execution Graph"
+      description={activeNode ? `Focused: ${activeNode.component}` : 'Zoom, pan and inspect runtime objects.'}
+      actions={
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setScale((value) => Math.max(0.72, value - 0.12))}>
+            -
+          </Button>
+          <span className="w-12 text-center font-mono text-xs text-muted">
+            {Math.round(scale * 100)}%
+          </span>
+          <Button size="sm" variant="ghost" onClick={() => setScale((value) => Math.min(1.35, value + 0.12))}>
+            +
+          </Button>
+          <Button size="sm" variant="secondary" onClick={centerCurrentStep}>
+            Center
+          </Button>
+        </div>
+      }
       className="h-full"
-      bodyClassName="h-[calc(100%-64px)] overflow-y-auto"
+      bodyClassName="relative overflow-hidden p-0"
     >
-      <div className="relative mx-auto max-w-2xl">
-        <svg
-          className="pointer-events-none absolute left-1/2 top-14 hidden h-full w-16 -translate-x-1/2 text-lineStrong md:block"
-          viewBox={`0 0 64 ${Math.max(1, pathHeight)}`}
-          preserveAspectRatio="none"
-          aria-hidden="true"
+      <div
+        ref={viewportRef}
+        className="h-full cursor-grab overflow-auto overscroll-contain bg-[radial-gradient(circle_at_1px_1px,#e2e8f0_1px,transparent_0)] bg-[length:22px_22px] active:cursor-grabbing"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <motion.div
+          className="relative min-h-full min-w-full origin-top-left"
+          style={{
+            width: graph.width,
+            height: graph.height,
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+          }}
+          transition={{ duration: 0.18 }}
         >
-          <motion.path
-            d={`M32 0 V${pathHeight}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            initial={{ pathLength: 0, opacity: 0.2 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-          />
-        </svg>
+          <svg
+            className="pointer-events-none absolute inset-0 overflow-visible"
+            width={graph.width}
+            height={graph.height}
+            viewBox={`0 0 ${graph.width} ${graph.height}`}
+            aria-hidden="true"
+          >
+            {graph.points.slice(0, -1).map((point, index) => {
+              const next = graph.points[index + 1];
+              const stroke = getStatusColor(next.node.status);
+              return (
+                <motion.path
+                  key={`${point.node.id}_${next.node.id}`}
+                  d={getConnectorPath(point, next)}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth={next.node.status === 'running' ? 3 : 2}
+                  strokeLinecap="round"
+                  strokeDasharray={next.node.status === 'waiting' ? '6 8' : undefined}
+                  initial={{ pathLength: 0, opacity: 0.35 }}
+                  animate={{ pathLength: 1, opacity: 0.92 }}
+                  transition={{ duration: 0.22 }}
+                />
+              );
+            })}
+          </svg>
 
-        <div className="relative grid gap-7">
-          {graphNodes.map((node, index) => (
+          {graph.points.map((point, index) => (
             <motion.div
-              key={node.id}
+              key={point.node.id}
+              ref={point.node.id === activeNodeId ? activeRef : undefined}
+              className="absolute"
+              style={{ left: point.x, top: point.y, width: nodeWidth }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18, delay: index * 0.025, ease: 'easeOut' }}
-              className="relative"
+              transition={{ duration: 0.18, delay: index * 0.025 }}
+              onPointerDown={(event) => event.stopPropagation()}
             >
-              {index > 0 && (
-                <div className="absolute -top-5 left-1/2 hidden h-3 w-3 -translate-x-1/2 rounded-full border border-lineStrong bg-white md:block" />
-              )}
               <ExecutionNode
-                node={node}
-                active={node.id === activeNodeId}
+                node={point.node}
+                active={point.node.id === activeNodeId}
                 onSelect={onSelectNode}
               />
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </Panel>
   );
+}
+
+function buildGraph(nodes: ExecutionNodeRecord[]): { points: GraphPoint[]; width: number; height: number } {
+  const lanes = [92, 390, 690];
+  const points = nodes.map((node, index) => {
+    const laneIndex = index % 3;
+    return {
+      node,
+      x: lanes[laneIndex],
+      y: 72 + index * 156,
+    };
+  });
+
+  return {
+    points,
+    width: 1040,
+    height: Math.max(520, 160 + nodes.length * 156),
+  };
+}
+
+function getConnectorPath(from: GraphPoint, to: GraphPoint): string {
+  const startX = from.x + nodeWidth / 2;
+  const startY = from.y + nodeHeight;
+  const endX = to.x + nodeWidth / 2;
+  const endY = to.y;
+  const middleY = startY + Math.max(34, (endY - startY) / 2);
+  return `M ${startX} ${startY} C ${startX} ${middleY}, ${endX} ${middleY}, ${endX} ${endY}`;
 }
