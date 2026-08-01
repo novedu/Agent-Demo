@@ -1,8 +1,6 @@
 import { useAgentStore } from '@console/store/agentStore';
 import {
-  ChevronDownIcon,
   CpuIcon,
-  PlusIcon,
   RuntimeIcon,
   ServerIcon,
 } from '@console/components/ui';
@@ -60,14 +58,9 @@ export function TopBar() {
         </div>
 
         <div className="flex min-w-0 items-center gap-2">
-          {/* New Task button */}
-          <button
-            type="button"
-            className="inline-flex h-6 items-center gap-1 rounded-md border border-accent bg-accent px-2 text-[10px] font-semibold text-white transition-colors hover:bg-blue-700"
-          >
-            <PlusIcon className="h-2.5 w-2.5" />
-            New Task
-          </button>
+          <span className="inline-flex h-6 items-center rounded-md border border-line bg-panel px-2 font-mono text-[10px] font-semibold text-muted">
+            Run from Chat
+          </span>
         </div>
       </div>
 
@@ -98,8 +91,8 @@ export function TopBar() {
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="flex items-center gap-1 text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            SSE Connected
+            <span className={`h-1.5 w-1.5 rounded-full ${status === 'running' ? 'animate-pulse bg-blue-500' : 'bg-emerald-500'}`} />
+            {status === 'running' ? 'SSE Streaming' : 'SSE Endpoint'}
           </span>
           <div className="flex h-5 w-5 items-center justify-center rounded-full border border-line bg-panel text-[9px] font-semibold text-ink">
             RJ
@@ -120,16 +113,12 @@ function Selector({
   value: string;
 }) {
   return (
-    <button
-      type="button"
-      className="flex h-6 items-center gap-1 rounded-md border border-line bg-panel px-1.5 text-[10px] text-muted transition-colors hover:border-lineStrong hover:bg-white"
-    >
+    <div className="flex h-6 items-center gap-1 rounded-md border border-line bg-panel px-1.5 text-[10px] text-muted">
       <span className="text-muted">{icon}</span>
       <span className="font-medium text-ink">{label}</span>
       <span className="text-muted">·</span>
       <span className="font-mono font-medium text-ink">{value}</span>
-      <ChevronDownIcon className="h-2.5 w-2.5 text-muted" />
-    </button>
+    </div>
   );
 }
 

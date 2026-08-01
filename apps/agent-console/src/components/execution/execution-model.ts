@@ -95,6 +95,7 @@ export function buildExecutionNodes(input: ExecutionModelInput): ExecutionNodeRe
 
 export function getCurrentNodeId(nodes: ExecutionNodeRecord[]): string | undefined {
   return (
+    nodes.find((node) => node.status === 'running' && node.kind !== 'workflow')?.id ??
     nodes.find((node) => node.status === 'running')?.id ??
     [...nodes].reverse().find((node) => node.status === 'success')?.id ??
     nodes.find((node) => node.status === 'waiting')?.id

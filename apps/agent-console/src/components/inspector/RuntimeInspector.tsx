@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import type { ReactNode } from 'react';
 import { Accordion, Badge, Card, JsonViewer } from '../ui';
 import { getKindLabel, getStatusTone } from '../execution/execution-model';
 import { EvaluationDashboard } from './EvaluationDashboard';
@@ -19,6 +20,7 @@ export function RuntimeInspector({
   status,
   isLoading,
   runtimeOverview,
+  runtimeObjects,
   focusedObject,
   focusSection,
   highlightedCitationId,
@@ -29,8 +31,9 @@ export function RuntimeInspector({
   onCitationSelect,
   onTraceSelect,
 }: RuntimeInspectorProps) {
-  const runtimeObject = focusedObject?.type === 'node' ? focusedObject.node : currentNode;
-  const focusType = focusedObject?.type ?? runtimeObject?.kind;
+  const runtimeNode = focusedObject?.type === 'node' ? focusedObject.node : currentNode;
+  const runtimeObject = runtimeObjects.find((object) => object.id === runtimeNode?.id);
+  const focusType = focusedObject?.type ?? runtimeObject?.type;
   const defaultOpen = getDefaultOpenSection(focusType, focusSection);
   const runtimeMetrics = readRuntimeMetrics(events);
 
@@ -42,7 +45,7 @@ export function RuntimeInspector({
             {runtimeObject ? 'Runtime Inspector' : 'Runtime Overview'}
           </div>
           <h2 className="mt-0.5 truncate text-sm font-semibold leading-4 text-ink">
-            {runtimeObject ? runtimeObject.component : 'System Status'}
+            {runtimeObject ? runtimeObject.title : 'System Status'}
           </h2>
         </div>
         <Badge tone={status === 'error' ? 'danger' : status === 'running' ? 'info' : 'neutral'} className="text-[10px] px-1.5 py-0.5">
@@ -57,134 +60,25 @@ export function RuntimeInspector({
         transition={{ duration: 0.2 }}
       >
         {runtimeObject ? (
-          <div className="p-4">
-            <section className="border-b border-line pb-4">
-              <header className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-ink">{runtimeObject.component}</div>
-                  <div className="mt-0.5 text-[10px] text-muted">
-                    {getKindLabel(runtimeObject.kind)}
-                  </div>
-                </div>
-                <Badge tone={getStatusTone(runtimeObject.status)}>{runtimeObject.status}</Badge>
-              </header>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Metric label="Duration" value={formatDuration(runtimeObject.duration)} />
-                <Metric label="Token" value={readMetric(runtimeObject.metadata, 'tokenCount') ?? '0'} />
-                <Metric label="Cost" value={formatCost(runtimeMetrics.cost)} />
-                <Metric label="Step" value={`${nodes.length}`} />
-              </div>
-            </section>
-
-            <div className="mt-4">
-            <Accordion
-              defaultOpenId={defaultOpen}
-              focusId={defaultOpen}
-              variant="flush"
-              items={[
-                {
-                  id: 'execution',
-                  title: 'Execution',
-                  meta: <Badge>{runtimeObject.component}</Badge>,
-                  children: (
-                    <JsonViewer title="Execution Snapshot" value={runtimeObject} collapsed />
-                  ),
-                },
-                {
-                  id: 'input',
-                  title: 'Input',
-                  meta: <Badge tone="info">JSON</Badge>,
-                  children: <JsonViewer title="Input" value={runtimeObject?.input} collapsed />,
-                },
-                {
-                  id: 'output',
-                  title: 'Output',
-                  meta: <Badge tone="success">Result</Badge>,
-                  children: <JsonViewer title="Output" value={runtimeObject?.output} collapsed />,
-                },
-                {
-                  id: 'reasoning',
-                  title: 'Reasoning',
-                  meta: <Badge tone="info">LLM</Badge>,
-                  children: (
-                    <JsonViewer
-                      title="Reasoning"
-                      value={getReasoning(runtimeObject, evaluation)}
-                      collapsed
-                    />
-                  ),
-                },
-                {
-                  id: 'trace',
-                  title: 'Trace',
-                  meta: <Badge>{events.length} spans</Badge>,
-                  children: (
-                    <TraceExplorer
-                      events={events}
-                      isLoading={isLoading}
-                      highlightedTraceId={highlightedTraceId}
-                      onSelectEvent={onTraceSelect}
-                    />
-                  ),
-                },
-                {
-                  id: 'evidence',
-                  title: 'Evidence',
-                  meta: <Badge tone="warning">{citations.length} refs</Badge>,
-                  children: (
-                    <KnowledgeExplorer
-                      citations={citations}
-                      isLoading={isLoading}
-                      highlightedCitationId={highlightedCitationId}
-                      onSelectCitation={onCitationSelect}
-                    />
-                  ),
-                },
-                {
-                  id: 'memory',
-                  title: 'Memory',
-                  meta: <Badge tone="neutral">{memory.length}</Badge>,
-                  children: (
-                    <MemoryExplorer
-                      memories={memory}
-                      isLoading={isLoading}
-                      highlightedMemoryId={highlightedMemoryId}
-                      onSelectMemory={onMemorySelect}
-                    />
-                  ),
-                },
-                {
-                  id: 'evaluation',
-                  title: 'Evaluation',
-                  meta: <Badge tone={evaluation ? 'success' : 'neutral'}>{evaluation ? 'Ready' : 'Pending'}</Badge>,
-                  children: (
-                    <EvaluationDashboard
-                      evaluation={evaluation}
-                      isLoading={isLoading}
-                      runtimeDuration={runtimeObject?.duration}
-                      runtimeTokens={runtimeMetrics.tokens}
-                      runtimeCost={runtimeMetrics.cost}
-                      onViewTrace={onEvaluationTrace}
-                    />
-                  ),
-                },
-                {
-                  id: 'logs',
-                  title: 'Logs',
-                  meta: <Badge>{events.length} events</Badge>,
-                  children: (
-                    <RuntimeLogs
-                      events={events}
-                      isLoading={isLoading}
-                      highlightedLogId={highlightedTraceId}
-                      onSelectEvent={onTraceSelect}
-                    />
-                  ),
-                },
-              ]}
-            />
-            </div>
-          </div>
+          <RuntimeObjectInspector
+            object={runtimeObject}
+            nodeCount={nodes.length}
+            defaultOpen={defaultOpen}
+            events={events}
+            memory={memory}
+            citations={citations}
+            evaluation={evaluation}
+            isLoading={isLoading}
+            runtimeTokens={runtimeMetrics.tokens}
+            runtimeCost={runtimeMetrics.cost}
+            highlightedCitationId={highlightedCitationId}
+            highlightedMemoryId={highlightedMemoryId}
+            highlightedTraceId={highlightedTraceId}
+            onMemorySelect={onMemorySelect}
+            onEvaluationTrace={onEvaluationTrace}
+            onCitationSelect={onCitationSelect}
+            onTraceSelect={onTraceSelect}
+          />
         ) : (
           <EmptyInspector runtimeOverview={runtimeOverview} />
         )}
@@ -194,6 +88,287 @@ export function RuntimeInspector({
         Focus mode · {tools.length} tool calls · {events.length} runtime events
       </footer>
     </Card>
+  );
+}
+
+interface RuntimeObjectInspectorProps {
+  object: RuntimeInspectorProps['runtimeObjects'][number];
+  nodeCount: number;
+  defaultOpen: string;
+  events: RuntimeInspectorProps['events'];
+  memory: RuntimeInspectorProps['memory'];
+  citations: RuntimeInspectorProps['citations'];
+  evaluation: RuntimeInspectorProps['evaluation'];
+  isLoading: boolean;
+  runtimeTokens?: number;
+  runtimeCost?: number;
+  highlightedCitationId?: string;
+  highlightedMemoryId?: string;
+  highlightedTraceId?: string;
+  onMemorySelect?: RuntimeInspectorProps['onMemorySelect'];
+  onEvaluationTrace?: RuntimeInspectorProps['onEvaluationTrace'];
+  onCitationSelect?: RuntimeInspectorProps['onCitationSelect'];
+  onTraceSelect?: RuntimeInspectorProps['onTraceSelect'];
+}
+
+function RuntimeObjectInspector({
+  object,
+  nodeCount,
+  defaultOpen,
+  events,
+  memory,
+  citations,
+  evaluation,
+  isLoading,
+  runtimeTokens,
+  runtimeCost,
+  highlightedCitationId,
+  highlightedMemoryId,
+  highlightedTraceId,
+  onMemorySelect,
+  onEvaluationTrace,
+  onCitationSelect,
+  onTraceSelect,
+}: RuntimeObjectInspectorProps) {
+  const sections = buildObjectSections({
+    object,
+    events,
+    memory,
+    citations,
+    evaluation,
+    isLoading,
+    runtimeTokens,
+    runtimeCost,
+    highlightedCitationId,
+    highlightedMemoryId,
+    highlightedTraceId,
+    onMemorySelect,
+    onEvaluationTrace,
+    onCitationSelect,
+    onTraceSelect,
+  });
+
+  return (
+    <div className="p-4">
+      <section className="border-b border-line pb-4">
+        <header className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-ink">{object.title}</div>
+            <div className="mt-0.5 text-[10px] text-muted">
+              {getKindLabel(object.sourceNode.kind)} · runtime object
+            </div>
+          </div>
+          <Badge tone={getStatusTone(object.status)}>{object.status}</Badge>
+        </header>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Metric label="Duration" value={formatDuration(object.duration)} />
+          <Metric label="Token" value={String(object.tokenCount ?? 0)} />
+          <Metric label="Retry" value={String(object.retryCount ?? 0)} />
+          <Metric label="Objects" value={`${nodeCount}`} />
+        </div>
+      </section>
+
+      <div className="mt-4">
+        <Accordion
+          defaultOpenId={defaultOpen}
+          focusId={defaultOpen}
+          variant="flush"
+          items={sections}
+        />
+      </div>
+    </div>
+  );
+}
+
+function buildObjectSections({
+  object,
+  events,
+  memory,
+  citations,
+  evaluation,
+  isLoading,
+  runtimeTokens,
+  runtimeCost,
+  highlightedCitationId,
+  highlightedMemoryId,
+  highlightedTraceId,
+  onMemorySelect,
+  onEvaluationTrace,
+  onCitationSelect,
+  onTraceSelect,
+}: Omit<RuntimeObjectInspectorProps, 'nodeCount' | 'defaultOpen'>) {
+  const sharedTraceSection = {
+    id: 'trace',
+    title: 'Trace Spans',
+    meta: <Badge>{events.length} spans</Badge>,
+    children: (
+      <TraceExplorer
+        events={events}
+        isLoading={isLoading}
+        highlightedTraceId={highlightedTraceId}
+        onSelectEvent={onTraceSelect}
+      />
+    ),
+  };
+  const logsSection = {
+    id: 'logs',
+    title: 'Runtime Logs',
+    meta: <Badge>{events.length} events</Badge>,
+    children: (
+      <RuntimeLogs
+        events={events}
+        isLoading={isLoading}
+        highlightedLogId={highlightedTraceId}
+        onSelectEvent={onTraceSelect}
+      />
+    ),
+  };
+
+  if (object.type === 'tool') {
+    return [
+      section('arguments', 'Arguments', <Badge tone="info">tool input</Badge>, (
+        <JsonViewer title="Tool Arguments" value={object.arguments ?? object.input} collapsed />
+      )),
+      section('output', 'Result', <Badge tone="success">{object.status}</Badge>, (
+        <JsonViewer title="Tool Result" value={object.output} collapsed />
+      )),
+      section('execution', 'Execution Metrics', <Badge>{formatDuration(object.duration)}</Badge>, (
+        <ObjectMetrics
+          rows={[
+            ['Tool', object.title],
+            ['Duration', formatDuration(object.duration)],
+            ['Retry', String(object.retryCount ?? 0)],
+            ['Tokens', String(object.tokenCount ?? 0)],
+          ]}
+        />
+      )),
+      sharedTraceSection,
+      logsSection,
+    ];
+  }
+
+  if (object.type === 'knowledge') {
+    return [
+      section('evidence', 'Retrieved Chunks', <Badge tone="warning">{citations.length} refs</Badge>, (
+        <KnowledgeExplorer
+          citations={citations}
+          isLoading={isLoading}
+          highlightedCitationId={highlightedCitationId}
+          onSelectCitation={onCitationSelect}
+        />
+      )),
+      section('query', 'Retriever Input', <Badge tone="info">RAG</Badge>, (
+        <JsonViewer title="Retriever Input" value={object.input} collapsed />
+      )),
+      sharedTraceSection,
+      logsSection,
+    ];
+  }
+
+  if (object.type === 'memory') {
+    return [
+      section('memory', 'Memory Writes', <Badge tone="neutral">{memory.length}</Badge>, (
+        <MemoryExplorer
+          memories={memory}
+          isLoading={isLoading}
+          highlightedMemoryId={highlightedMemoryId}
+          onSelectMemory={onMemorySelect}
+        />
+      )),
+      section('metadata', 'Memory Metadata', <Badge>metadata</Badge>, (
+        <JsonViewer title="Memory Metadata" value={object.metadata ?? object.output} collapsed />
+      )),
+      sharedTraceSection,
+      logsSection,
+    ];
+  }
+
+  if (object.type === 'evaluation') {
+    return [
+      section('evaluation', 'Evaluation Dashboard', <Badge tone={evaluation ? 'success' : 'neutral'}>{evaluation ? 'ready' : 'pending'}</Badge>, (
+        <EvaluationDashboard
+          evaluation={evaluation}
+          isLoading={isLoading}
+          runtimeDuration={object.duration}
+          runtimeTokens={runtimeTokens}
+          runtimeCost={runtimeCost}
+          onViewTrace={onEvaluationTrace}
+        />
+      )),
+      section('reasoning', 'Feedback', <Badge tone="info">judge</Badge>, (
+        <JsonViewer title="Evaluation Feedback" value={evaluation?.feedback ?? object.output} collapsed />
+      )),
+      sharedTraceSection,
+      logsSection,
+    ];
+  }
+
+  if (object.type === 'answer') {
+    return [
+      section('output', 'Final Answer', <Badge tone="success">answer</Badge>, (
+        <JsonViewer title="Answer Output" value={object.output} collapsed />
+      )),
+      section('evidence', 'Evidence Used', <Badge tone="warning">{citations.length} refs</Badge>, (
+        <KnowledgeExplorer
+          citations={citations}
+          isLoading={isLoading}
+          highlightedCitationId={highlightedCitationId}
+          onSelectCitation={onCitationSelect}
+        />
+      )),
+      section('evaluation', 'Quality', <Badge tone={evaluation ? 'success' : 'neutral'}>{evaluation ? 'ready' : 'pending'}</Badge>, (
+        <EvaluationDashboard
+          evaluation={evaluation}
+          isLoading={isLoading}
+          runtimeDuration={object.duration}
+          runtimeTokens={runtimeTokens}
+          runtimeCost={runtimeCost}
+          onViewTrace={onEvaluationTrace}
+        />
+      )),
+      sharedTraceSection,
+    ];
+  }
+
+  if (object.type === 'reflection') {
+    return [
+      section('reasoning', 'Reflection Reasoning', <Badge tone="info">reasoning</Badge>, (
+        <JsonViewer title="Reflection Output" value={object.reasoning ?? object.output} collapsed />
+      )),
+      section('input', 'Reflection Input', <Badge>input</Badge>, (
+        <JsonViewer title="Reflection Input" value={object.input} collapsed />
+      )),
+      sharedTraceSection,
+      logsSection,
+    ];
+  }
+
+  return [
+    section('execution', 'Execution Snapshot', <Badge>{object.title}</Badge>, (
+      <JsonViewer title="Runtime Object" value={object} collapsed />
+    )),
+    section('input', 'Input', <Badge tone="info">JSON</Badge>, (
+      <JsonViewer title="Input" value={object.input ?? object.arguments} collapsed />
+    )),
+    section('output', 'Output', <Badge tone="success">Result</Badge>, (
+      <JsonViewer title="Output" value={object.output} collapsed />
+    )),
+    sharedTraceSection,
+    logsSection,
+  ];
+}
+
+function section(id: string, title: string, meta: ReactNode, children: ReactNode) {
+  return { id, title, meta, children };
+}
+
+function ObjectMetrics({ rows }: { rows: Array<[string, string]> }) {
+  return (
+    <div className="grid gap-2">
+      {rows.map(([label, value]) => (
+        <RuntimeContextRow key={label} label={label} value={value} />
+      ))}
+    </div>
   );
 }
 
@@ -303,19 +478,6 @@ function getDefaultOpenSection(focusType?: string, focusSection?: string): strin
   return 'execution';
 }
 
-function getReasoning(runtimeObject: RuntimeInspectorProps['currentNode'], evaluation?: RuntimeInspectorProps['evaluation']) {
-  if (!runtimeObject) return 'No focused runtime object.';
-  if (runtimeObject.kind === 'reflection') return runtimeObject.output ?? runtimeObject.trace;
-  if (runtimeObject.kind === 'evaluation') return evaluation?.feedback ?? runtimeObject.metadata;
-  if (runtimeObject.kind === 'tool') return runtimeObject.metadata?.reasoning ?? runtimeObject.trace;
-  return runtimeObject.metadata?.reasoning ?? runtimeObject.trace ?? runtimeObject.output;
-}
-
-function readMetric(metadata: Record<string, unknown> | undefined, key: string): string | undefined {
-  const value = metadata?.[key];
-  return typeof value === 'number' || typeof value === 'string' ? String(value) : undefined;
-}
-
 function readRuntimeMetrics(events: RuntimeInspectorProps['events']) {
   const tokens = events.reduce((sum, event) => sum + readTokenCount(event.payload), 0);
   const timestamps = events.map((event) => event.timestamp).filter(Boolean);
@@ -340,9 +502,4 @@ function readTokenCount(payload: unknown): number {
 function formatDuration(duration?: number): string {
   if (duration === undefined) return '-';
   return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
-}
-
-function formatCost(value?: number): string {
-  if (value === undefined) return '-';
-  return `$${value.toFixed(4)}`;
 }

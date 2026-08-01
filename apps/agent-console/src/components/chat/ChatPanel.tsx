@@ -4,6 +4,7 @@ import { InputBox } from './InputBox';
 import { MessageItem } from './MessageItem';
 import type { ConsoleMessage } from '../../types/agent';
 import type { RuntimeOverview } from '../../features/agent-console/runtime-overview';
+import type { RuntimeObject } from '../../features/agent-console/runtime-object-model';
 
 interface ChatPanelProps {
   messages: ConsoleMessage[];
@@ -16,8 +17,9 @@ interface ChatPanelProps {
   onCitationFocus?: (citationId?: string) => void;
   highlightedMessageId?: string;
   hasTaskActivity?: boolean;
-  onStartTask?: () => void;
+  onStartTask?: (input?: string) => void;
   runtimeOverview: RuntimeOverview;
+  runtimeObjects: RuntimeObject[];
 }
 
 export function ChatPanel({
@@ -27,11 +29,13 @@ export function ChatPanel({
   currentTool,
   onSubmit,
   onStop,
+  onRegenerate,
   onCitationFocus,
   highlightedMessageId,
   hasTaskActivity,
   onStartTask,
   runtimeOverview,
+  runtimeObjects,
 }: ChatPanelProps) {
   const messageViewportRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -104,6 +108,7 @@ export function ChatPanel({
                   highlighted={message.id === highlightedMessageId}
                   onCitationFocus={onCitationFocus}
                   runtimeOverview={runtimeOverview}
+                  runtimeObjects={runtimeObjects}
                 />
               ))}
             </div>
@@ -123,16 +128,33 @@ export function ChatPanel({
 
       {/* Input box - always at bottom */}
       <div className="shrink-0">
-        <InputBox disabled={isStreaming} onSubmit={onSubmit} onStop={onStop} />
+        <InputBox
+          disabled={isStreaming}
+          onSubmit={onSubmit}
+          onStop={onStop}
+          onRegenerate={onRegenerate}
+        />
       </div>
     </section>
   );
 }
 
 const suggestions = [
-  { title: 'Analyze sales decline', detail: 'Sales data + KPI + RAG + report' },
-  { title: 'RAG QA', detail: 'Retrieve policy context and answer' },
-  { title: 'Memory check', detail: 'Persist preference and task memory' },
+  {
+    title: 'Sales decline demo',
+    detail: 'Planner + sales tools + RAG + evaluation',
+    input: '分析华东销售下降原因，并生成报告',
+  },
+  {
+    title: 'RAG QA',
+    detail: 'Retrieve knowledge and answer with evidence',
+    input: '检索知识库，解释华东销售下降可能原因',
+  },
+  {
+    title: 'Memory run',
+    detail: 'Use memory context and save task summary',
+    input: '我主要关注销售分析，请帮我分析华东区域销售下降原因',
+  },
 ] as const;
 
 function RuntimePreview({
@@ -141,7 +163,7 @@ function RuntimePreview({
   runtimeOverview,
 }: {
   messages: ConsoleMessage[];
-  onStartTask?: () => void;
+  onStartTask?: (input?: string) => void;
   runtimeOverview: RuntimeOverview;
 }) {
   return (
@@ -154,17 +176,21 @@ function RuntimePreview({
             </div>
             <div className="min-w-0">
               <h2 className="truncate text-sm font-semibold text-ink">
-                Ready to run an agent task
+                Ready for an industry demo run
               </h2>
               <p className="mt-0.5 truncate text-xs text-muted">
-                {runtimeOverview.environment} · {runtimeOverview.model} · {runtimeOverview.taskLabel}
+                {'Planner -> Tool -> Knowledge -> Memory -> Reflection -> Evaluation -> Answer.'}
               </p>
             </div>
           </div>
-          <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[10px] font-semibold text-emerald-700">
+          <button
+            type="button"
+            onClick={() => onStartTask?.('分析华东销售下降原因，并生成报告')}
+            className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-accent bg-accent px-3 text-[10px] font-semibold text-white transition-colors duration-200 hover:bg-blue-700"
+          >
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            Ready
-          </span>
+            Run demo
+          </button>
         </div>
       </div>
 
@@ -187,6 +213,7 @@ function RuntimePreview({
               message={message}
               onCitationFocus={undefined}
               runtimeOverview={runtimeOverview}
+              runtimeObjects={[]}
             />
           ))}
         </div>
@@ -201,7 +228,7 @@ function RuntimePreview({
             <button
               key={suggestion.title}
               type="button"
-              onClick={onStartTask}
+              onClick={() => onStartTask?.(suggestion.input)}
               className="cursor-pointer rounded-lg border border-line bg-white p-3 text-left transition-colors duration-200 hover:border-blue-200 hover:bg-blue-50/50"
             >
               <span className="block text-xs font-semibold text-ink">{suggestion.title}</span>

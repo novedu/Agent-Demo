@@ -6,9 +6,10 @@ interface InputBoxProps {
   disabled?: boolean;
   onSubmit: (value: string) => void;
   onStop?: () => void;
+  onRegenerate?: () => void;
 }
 
-export function InputBox({ disabled, onSubmit, onStop }: InputBoxProps) {
+export function InputBox({ disabled, onSubmit, onStop, onRegenerate }: InputBoxProps) {
   const [value, setValue] = useState('');
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -35,77 +36,46 @@ export function InputBox({ disabled, onSubmit, onStop }: InputBoxProps) {
             <button
               type="button"
               onClick={onStop}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-rose-500 text-white hover:bg-rose-600"
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-rose-500 text-white transition-colors duration-200 hover:bg-rose-600"
+              aria-label="Stop generation"
             >
               <StopIcon className="h-3 w-3" />
             </button>
           ) : (
-            <button
-              type="submit"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-white hover:bg-blue-700 disabled:opacity-50"
-              disabled={!value.trim()}
-            >
-              <PlayIcon className="h-3 w-3" />
-            </button>
+            <>
+              {onRegenerate && (
+                <button
+                  type="button"
+                  onClick={onRegenerate}
+                  className="hidden h-6 cursor-pointer items-center rounded-md border border-line bg-white px-2 text-[10px] font-semibold text-muted transition-colors duration-200 hover:border-blue-200 hover:bg-blue-50 hover:text-accent sm:inline-flex"
+                >
+                  Regenerate
+                </button>
+              )}
+              <button
+                type="submit"
+                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-accent text-white transition-colors duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!value.trim()}
+                aria-label="Send task"
+              >
+                <PlayIcon className="h-3 w-3" />
+              </button>
+            </>
           )}
         </div>
       </div>
       <div className="flex items-center justify-between px-3 pb-2">
-        <div className="flex items-center gap-1">
-          <ToolbarBtn title="Attach file">
-            <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="3" y="2" width="10" height="12" rx="1" />
-              <path d="M3 5h10" />
-            </svg>
-          </ToolbarBtn>
-          <ToolbarBtn title="Upload image">
-            <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="2" y="3" width="12" height="10" rx="1.5" />
-              <circle cx="5.5" cy="6.5" r="1" />
-              <path d="M14 11l-3-3-2 2-2-2-3 3" />
-            </svg>
-          </ToolbarBtn>
-          <ToolbarBtn title="Voice input">
-            <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="6" y="2" width="4" height="8" rx="2" />
-              <path d="M4 7.5C4 9.5 6 11 8 11s4-1.5 4-3.5" />
-              <path d="M8 11v2" />
-              <path d="M5 13h6" />
-            </svg>
-          </ToolbarBtn>
-          <ToolbarBtn title="More options">
-            <svg viewBox="0 0 16 16" className="h-3 w-3" fill="currentColor">
-              <circle cx="3" cy="8" r="1.2" />
-              <circle cx="8" cy="8" r="1.2" />
-              <circle cx="13" cy="8" r="1.2" />
-            </svg>
-          </ToolbarBtn>
+        <div className="flex items-center gap-1.5 text-[9px] text-muted">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span>Real SSE runtime</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] text-muted">Model</span>
-          <button
-            type="button"
-            className="inline-flex h-5 items-center gap-1 rounded border border-line bg-white px-1.5 text-[10px] font-medium text-ink hover:bg-panel"
-          >
+          <span className="inline-flex h-5 items-center gap-1 rounded border border-line bg-white px-1.5 text-[10px] font-medium text-ink">
             <span>{getRuntimeModelLabel()}</span>
-            <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3 4.5l2 2 2-2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+          </span>
         </div>
       </div>
     </form>
-  );
-}
-
-function ToolbarBtn({ children, title }: { children: React.ReactNode; title: string }) {
-  return (
-    <button
-      type="button"
-      title={title}
-      className="flex h-5 w-5 items-center justify-center rounded text-muted transition-colors hover:bg-panel hover:text-ink"
-    >
-      {children}
-    </button>
   );
 }

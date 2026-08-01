@@ -9,6 +9,7 @@ import type {
 } from '../../types/agent';
 import type { ExecutionNodeRecord, FocusedRuntimeObject } from '../execution/execution-model';
 import type { RuntimeOverview } from '../../features/agent-console/runtime-overview';
+import type { RuntimeObject } from '../../features/agent-console/runtime-object-model';
 
 export interface RuntimeInspectorProps {
   currentNode?: ExecutionNodeRecord;
@@ -23,6 +24,7 @@ export interface RuntimeInspectorProps {
   status: string;
   isLoading: boolean;
   runtimeOverview: RuntimeOverview;
+  runtimeObjects: RuntimeObject[];
   focusedObject?: FocusedRuntimeObject;
   focusSection?: string;
   highlightedCitationId?: string;

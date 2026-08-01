@@ -6,12 +6,13 @@ interface ExecutionGraphEmptyStateProps {
 
 export function ExecutionGraphEmptyState({ onStart }: ExecutionGraphEmptyStateProps) {
   const nodes = [
-    { label: 'Planner', color: 'text-blue-700' },
-    { label: 'Knowledge', color: 'text-amber-700' },
-    { label: 'Tool', color: 'text-emerald-700' },
-    { label: 'Memory', color: 'text-purple-700' },
-    { label: 'Reflection', color: 'text-blue-700' },
-    { label: 'Answer', color: 'text-emerald-700' },
+    { label: 'Planner', detail: 'plan', color: 'border-blue-200 bg-blue-50 text-blue-700' },
+    { label: 'Tool', detail: 'execute', color: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+    { label: 'Knowledge', detail: 'retrieve', color: 'border-amber-200 bg-amber-50 text-amber-700' },
+    { label: 'Memory', detail: 'write', color: 'border-purple-200 bg-purple-50 text-purple-700' },
+    { label: 'Reflection', detail: 'check', color: 'border-blue-200 bg-blue-50 text-blue-700' },
+    { label: 'Evaluation', detail: 'score', color: 'border-slate-300 bg-white text-slate-700' },
+    { label: 'Answer', detail: 'stream', color: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
   ];
 
   return (
@@ -33,33 +34,52 @@ export function ExecutionGraphEmptyState({ onStart }: ExecutionGraphEmptyStatePr
         </button>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col justify-center gap-2">
-        <div className="flex items-center justify-between gap-3 text-[10px] text-muted">
-          <span>Planner</span>
-          <span className="font-mono">waiting</span>
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold text-ink">Agent idle, runtime path armed</div>
+            <div className="mt-0.5 text-[10px] text-muted">
+              Run the sales decline task to watch every object become live.
+            </div>
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-line bg-white px-2 py-1 font-mono text-[10px] text-muted">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-600" />
+            ready
+          </div>
         </div>
-        <div className="flex items-center gap-1 overflow-x-auto">
+
+        <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-line bg-white p-2">
           {nodes.map((node, index) => (
             <div key={node.label} className="flex items-center gap-1">
-              <div className="flex h-7 items-center rounded-md border border-line bg-panel px-2 text-[10px] font-semibold text-ink">
-                <span className={node.color}>{node.label}</span>
+              <div className={`flex h-11 min-w-[86px] flex-col justify-center rounded-md border px-2 ${node.color}`}>
+                <span className="truncate text-[10px] font-semibold">{node.label}</span>
+                <span className="font-mono text-[9px] opacity-70">{node.detail}</span>
               </div>
               {index < nodes.length - 1 && (
                 <svg
-                  viewBox="0 0 20 8"
-                  className="h-2 w-4 shrink-0 text-lineStrong"
+                  viewBox="0 0 26 8"
+                  className="h-2 w-5 shrink-0 text-lineStrong"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1"
                 >
-                  <path d="M2 4h14M13 1l4 3-4 3" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M2 4h20M19 1l4 3-4 3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
             </div>
           ))}
         </div>
-        <div className="text-[10px] leading-4 text-muted">
-          When a task starts, this strip becomes the runtime dependency explanation.
+
+        <div className="grid gap-2 text-[10px] leading-4 text-muted md:grid-cols-3">
+          <div className="rounded-md border border-line bg-panel px-2 py-1.5">
+            Chat streams the answer and runtime summary.
+          </div>
+          <div className="rounded-md border border-line bg-panel px-2 py-1.5">
+            Timeline appends spans as Server-Sent Events arrive.
+          </div>
+          <div className="rounded-md border border-line bg-panel px-2 py-1.5">
+            Inspector follows the selected runtime object.
+          </div>
         </div>
       </div>
     </Panel>

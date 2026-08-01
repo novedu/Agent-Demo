@@ -17,8 +17,13 @@ import { RuntimeInspector } from '../../components/inspector';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
 import { buildRuntimeOverview } from './runtime-overview';
+import {
+  buildRuntimeDependencyEdges,
+  buildRuntimeObjects,
+  type RuntimeObject,
+} from './runtime-object-model';
 
-const defaultTask = 'Analyze sales decline in East China and generate a report';
+const defaultTask = '分析华东销售下降原因，并生成报告';
 
 export function AgentConsole() {
   const { start, stop } = useAgentStream();
@@ -50,14 +55,23 @@ export function AgentConsole() {
       }),
     [citations, evaluation, events, messages, plan, status, tools, workflow],
   );
-  const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+  const latestUserMessage = useMemo(
+    () => [...messages].reverse().find((message) => message.role === 'user'),
+    [messages],
+  );
   const hasTaskActivity = status !== 'idle' || events.length > 0 || Boolean(latestUserMessage);
-  const displayNodes = hasTaskActivity ? nodes : [];
+  const displayNodes = useMemo(() => (hasTaskActivity ? nodes : []), [hasTaskActivity, nodes]);
+  const runtimeObjects = useMemo(() => buildRuntimeObjects(displayNodes), [displayNodes]);
+  const dependencyEdges = useMemo(
+    () => buildRuntimeDependencyEdges(runtimeObjects),
+    [runtimeObjects],
+  );
   const currentNodeId = hasTaskActivity ? getCurrentNodeId(displayNodes) : undefined;
-  const [selectedNode, setSelectedNode] = useState<ExecutionNodeRecord | undefined>();
+  const [selectedRuntimeObject, setSelectedRuntimeObject] = useState<RuntimeObject | undefined>();
   const [focusedRuntimeObject, setFocusedRuntimeObject] = useState<FocusedRuntimeObject>();
   const [focusedNodeId, setFocusedNodeId] = useState<string | undefined>(currentNodeId);
   const [focusedInspectorSection, setFocusedInspectorSection] = useState<string>();
+  const [autoFollowRuntime, setAutoFollowRuntime] = useState(true);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string>();
   const [highlightedCitationId, setHighlightedCitationId] = useState<string>();
   const [highlightedMemoryId, setHighlightedMemoryId] = useState<string>();
@@ -106,31 +120,35 @@ export function AgentConsole() {
     if (!hasTaskActivity) {
       setFocusedRuntimeObject(undefined);
       setFocusedNodeId(undefined);
-      setSelectedNode(undefined);
+      setSelectedRuntimeObject(undefined);
+      setAutoFollowRuntime(true);
       return;
     }
 
-    if (!focusedRuntimeObject && currentNode) {
+    if ((autoFollowRuntime || !focusedRuntimeObject) && currentNode) {
       setFocusedRuntimeObject({ type: 'node', id: currentNode.id, node: currentNode });
       setFocusedNodeId(currentNode.id);
     }
-  }, [currentNode, focusedRuntimeObject, hasTaskActivity]);
+  }, [autoFollowRuntime, currentNode, focusedRuntimeObject, hasTaskActivity]);
 
   function handleTimelineSelect(node: ExecutionNodeRecord) {
+    setAutoFollowRuntime(false);
     setFocusedNodeId(node.id);
     setFocusedRuntimeObject({ type: 'node', id: node.id, node });
-    setSelectedNode(undefined);
+    setSelectedRuntimeObject(undefined);
     setFocusedInspectorSection('trace');
   }
 
   function handleGraphSelect(node: ExecutionNodeRecord) {
+    setAutoFollowRuntime(false);
     setFocusedNodeId(node.id);
     setFocusedRuntimeObject({ type: 'node', id: node.id, node });
-    setSelectedNode(node);
+    setSelectedRuntimeObject(runtimeObjects.find((object) => object.id === node.id));
     setFocusedInspectorSection('trace');
   }
 
   function handleCitationFocus(citationId?: string) {
+    setAutoFollowRuntime(false);
     const citation = findCitation(citations, citationId);
     setFocusedInspectorSection('knowledge');
     if (!citation) return;
@@ -139,12 +157,14 @@ export function AgentConsole() {
   }
 
   function handleCitationSelect(citation: CitationRecord) {
+    setAutoFollowRuntime(false);
     setFocusedRuntimeObject({ type: 'citation', id: citation.id });
     setFocusedInspectorSection('knowledge');
     setTimedHighlight(setHighlightedCitationId, citation.id);
   }
 
   function handleMemorySelect(memoryItem?: MemoryRecord) {
+    setAutoFollowRuntime(false);
     if (memoryItem) {
       setFocusedRuntimeObject({ type: 'memory', id: memoryItem.id });
       setTimedHighlight(setHighlightedMemoryId, memoryItem.id);
@@ -155,6 +175,7 @@ export function AgentConsole() {
   }
 
   function handleEvaluationTrace() {
+    setAutoFollowRuntime(false);
     setFocusedRuntimeObject({ type: 'evaluation', id: 'evaluation' });
     setFocusedInspectorSection('trace');
     const event = [...events].reverse().find((item) => item.type === 'evaluation_complete');
@@ -162,6 +183,7 @@ export function AgentConsole() {
   }
 
   function handleTraceSelect(event: AgentEvent) {
+    setAutoFollowRuntime(false);
     const relatedNode = findNodeForEvent(displayNodes, event);
     setFocusedRuntimeObject({ type: 'trace', id: event.id, eventType: event.type });
     setFocusedInspectorSection('trace');
@@ -170,7 +192,7 @@ export function AgentConsole() {
     if (relatedNode) {
       setFocusedNodeId(relatedNode.id);
       setFocusedRuntimeObject({ type: 'node', id: relatedNode.id, node: relatedNode });
-      setSelectedNode(relatedNode);
+      setSelectedRuntimeObject(runtimeObjects.find((object) => object.id === relatedNode.id));
     }
   }
 
@@ -193,8 +215,12 @@ export function AgentConsole() {
               onCitationFocus={handleCitationFocus}
               highlightedMessageId={highlightedMessageId}
               hasTaskActivity={hasTaskActivity}
-              onStartTask={() => start(defaultTask)}
+              onStartTask={(input = defaultTask) => {
+                setAutoFollowRuntime(true);
+                start(input);
+              }}
               runtimeOverview={runtimeOverview}
+              runtimeObjects={runtimeObjects}
             />
           </div>
 
@@ -203,6 +229,8 @@ export function AgentConsole() {
               {hasTaskActivity ? (
                 <ExecutionExplorer
                   nodes={displayNodes}
+                  runtimeObjects={runtimeObjects}
+                  dependencyEdges={dependencyEdges}
                   activeNodeId={activeNodeId}
                   onSelectNode={handleGraphSelect}
                 />
@@ -214,6 +242,7 @@ export function AgentConsole() {
             <div className="min-h-0 min-w-0 overflow-hidden">
               <ExecutionTimeline
                 nodes={displayNodes}
+                runtimeObjects={runtimeObjects}
                 activeNodeId={activeNodeId}
                 onSelectNode={handleTimelineSelect}
                 onStart={() => start(defaultTask)}
@@ -236,6 +265,7 @@ export function AgentConsole() {
             status={status}
             isLoading={isLoading}
             runtimeOverview={runtimeOverview}
+            runtimeObjects={runtimeObjects}
             focusedObject={focusedRuntimeObject}
             focusSection={focusedInspectorSection}
             highlightedCitationId={highlightedCitationId}
@@ -249,7 +279,10 @@ export function AgentConsole() {
         </div>
       </section>
 
-      <StepDrawer node={selectedNode} onClose={() => setSelectedNode(undefined)} />
+      <StepDrawer
+        object={selectedRuntimeObject}
+        onClose={() => setSelectedRuntimeObject(undefined)}
+      />
     </main>
   );
 }

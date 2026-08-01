@@ -2,10 +2,10 @@ import ReactMarkdown from 'react-markdown';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Badge, JsonViewer } from '../ui';
 import { classNames } from '../ui/classNames';
-import type { ExecutionNodeRecord } from './execution-model';
+import type { RuntimeObject } from '../../features/agent-console/runtime-object-model';
 
 interface StepDetailProps {
-  node: ExecutionNodeRecord;
+  object: RuntimeObject;
 }
 
 type StepTab = 'overview' | 'input' | 'output' | 'reasoning' | 'trace' | 'metadata' | 'raw';
@@ -20,25 +20,29 @@ const tabs: Array<{ id: StepTab; label: string }> = [
   { id: 'raw', label: 'Raw JSON' },
 ];
 
-export function StepDetail({ node }: StepDetailProps) {
+export function StepDetail({ object }: StepDetailProps) {
   const [activeTab, setActiveTab] = useState<StepTab>('overview');
   const raw = useMemo(
     () => ({
-      id: node.id,
-      kind: node.kind,
-      component: node.component,
-      summary: node.summary,
-      status: node.status,
-      duration: node.duration,
-      startTime: node.startTime,
-      endTime: node.endTime,
-      input: node.input,
-      arguments: node.arguments,
-      output: node.output,
-      metadata: node.metadata,
-      trace: node.trace,
+      id: object.id,
+      type: object.type,
+      title: object.title,
+      summary: object.summary,
+      status: object.status,
+      duration: object.duration,
+      startTime: object.startTime,
+      endTime: object.endTime,
+      input: object.input,
+      arguments: object.arguments,
+      output: object.output,
+      reasoning: object.reasoning,
+      metadata: object.metadata,
+      trace: object.trace,
+      tokenCount: object.tokenCount,
+      retryCount: object.retryCount,
+      cost: object.cost,
     }),
-    [node],
+    [object],
   );
 
   return (
@@ -61,20 +65,21 @@ export function StepDetail({ node }: StepDetailProps) {
         ))}
       </div>
 
-      {activeTab === 'overview' && <Overview node={node} />}
+      {activeTab === 'overview' && <Overview object={object} />}
       {activeTab === 'input' && (
-        <JsonViewer title="Input" value={{ input: node.input, arguments: node.arguments }} />
+        <JsonViewer title="Input" value={{ input: object.input, arguments: object.arguments }} />
       )}
-      {activeTab === 'output' && <SmartBlock title="Output" value={node.output} />}
-      {activeTab === 'reasoning' && <SmartBlock title="Reasoning Summary" value={getReasoning(node)} />}
-      {activeTab === 'trace' && <JsonViewer title="Trace" value={node.trace} />}
-      {activeTab === 'metadata' && <JsonViewer title="Metadata" value={node.metadata} />}
+      {activeTab === 'output' && <SmartBlock title="Output" value={object.output} />}
+      {activeTab === 'reasoning' && <SmartBlock title="Reasoning Summary" value={getReasoning(object)} />}
+      {activeTab === 'trace' && <JsonViewer title="Trace" value={object.trace} />}
+      {activeTab === 'metadata' && <JsonViewer title="Metadata" value={object.metadata} />}
       {activeTab === 'raw' && <JsonViewer title="Raw Runtime Object" value={raw} />}
     </div>
   );
 }
 
-function Overview({ node }: { node: ExecutionNodeRecord }) {
+function Overview({ object }: { object: RuntimeObject }) {
+  const node = object.sourceNode;
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-line bg-white p-4">
@@ -83,21 +88,23 @@ function Overview({ node }: { node: ExecutionNodeRecord }) {
             <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
               Focused Runtime Object
             </div>
-            <h3 className="mt-2 truncate text-lg font-semibold text-ink">{node.component}</h3>
-            <p className="mt-1 text-sm leading-6 text-muted">{node.summary}</p>
+            <h3 className="mt-2 truncate text-lg font-semibold text-ink">{object.title}</h3>
+            <p className="mt-1 text-sm leading-6 text-muted">{object.summary}</p>
           </div>
-          <Badge tone={node.status === 'failed' ? 'danger' : node.status === 'success' ? 'success' : 'info'}>
-            {node.status}
+          <Badge tone={object.status === 'failed' ? 'danger' : object.status === 'success' ? 'success' : 'info'}>
+            {object.status}
           </Badge>
         </div>
       </div>
       <dl className="grid grid-cols-2 gap-3 text-xs">
-        <Detail label="Component" value={node.component} />
-        <Detail label="Kind" value={node.kind} />
-        <Detail label="Duration" value={formatDuration(node.duration)} />
-        <Detail label="Tool" value={getToolName(node)} />
-        <Detail label="Start" value={formatTime(node.startTime)} />
-        <Detail label="End" value={formatTime(node.endTime)} />
+        <Detail label="Component" value={object.title} />
+        <Detail label="Type" value={object.type} />
+        <Detail label="Duration" value={formatDuration(object.duration)} />
+        <Detail label="Retry" value={String(object.retryCount ?? 0)} />
+        <Detail label="Tokens" value={String(object.tokenCount ?? 0)} />
+        <Detail label="Source Kind" value={node.kind} />
+        <Detail label="Start" value={formatTime(object.startTime)} />
+        <Detail label="End" value={formatTime(object.endTime)} />
       </dl>
     </div>
   );
@@ -129,18 +136,12 @@ function SmartBlock({ title, value }: { title: string; value: unknown }) {
   return <JsonViewer title={title} value={value} />;
 }
 
-function getReasoning(node: ExecutionNodeRecord): unknown {
-  if (node.metadata && 'reasoning' in node.metadata) return node.metadata.reasoning;
-  if (node.kind === 'reflection') return node.output;
-  if (node.kind === 'evaluation') return node.metadata;
-  if (node.kind === 'tool') return node.trace;
+function getReasoning(object: RuntimeObject): unknown {
+  if (object.reasoning) return object.reasoning;
+  if (object.type === 'reflection') return object.output;
+  if (object.type === 'evaluation') return object.metadata;
+  if (object.type === 'tool') return object.trace;
   return 'No reasoning payload captured for this runtime object.';
-}
-
-function getToolName(node: ExecutionNodeRecord): string {
-  if (node.kind !== 'tool') return '-';
-  const toolName = node.metadata?.toolName;
-  return typeof toolName === 'string' ? toolName : node.component;
 }
 
 function formatDuration(duration?: number): string {

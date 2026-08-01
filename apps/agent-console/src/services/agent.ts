@@ -54,6 +54,16 @@ export async function createAgentTask(input: string): Promise<CreateAgentTaskRes
   return response.json() as Promise<CreateAgentTaskResponse>;
 }
 
+export async function cancelAgentTask(taskId: string): Promise<void> {
+  const response = await fetch(`${getAgentServerURL()}/api/agent/tasks/${taskId}/cancel`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Cancel Agent task failed: ${response.status} ${await response.text()}`);
+  }
+}
+
 export function subscribeAgentEvents(
   taskId: string,
   options: SubscribeAgentEventsOptions,

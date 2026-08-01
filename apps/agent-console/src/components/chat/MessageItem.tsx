@@ -4,6 +4,7 @@ import type { ConsoleMessage } from '../../types/agent';
 import { AgentIcon, Badge, Button, CopyIcon } from '../ui';
 import { classNames } from '../ui/classNames';
 import type { RuntimeOverview } from '../../features/agent-console/runtime-overview';
+import type { RuntimeObject } from '../../features/agent-console/runtime-object-model';
 
 interface MessageItemProps {
   message: ConsoleMessage;
@@ -11,6 +12,7 @@ interface MessageItemProps {
   highlighted?: boolean;
   onCitationFocus?: (citationId?: string) => void;
   runtimeOverview?: RuntimeOverview;
+  runtimeObjects?: RuntimeObject[];
 }
 
 export function MessageItem({
@@ -19,6 +21,7 @@ export function MessageItem({
   highlighted = false,
   onCitationFocus,
   runtimeOverview,
+  runtimeObjects = [],
 }: MessageItemProps) {
   const isUser = message.role === 'user';
   const isEmptyAssistant = !isUser && message.content.length === 0;
@@ -43,6 +46,7 @@ export function MessageItem({
             message={message}
             evidenceOpen={evidenceOpen}
             runtimeOverview={runtimeOverview}
+            runtimeObjects={runtimeObjects}
             onEvidenceToggle={() => {
               setEvidenceOpen((value) => !value);
               onCitationFocus?.();
@@ -121,7 +125,7 @@ function MessageHeader({ message, isUser }: { message: ConsoleMessage; isUser: b
           </div>
         </div>
       </div>
-      {!isUser && <Badge tone="neutral">Evaluation</Badge>}
+      {!isUser && <Badge tone="info">Agent Run</Badge>}
     </div>
   );
 }
@@ -130,14 +134,17 @@ function AssistantRuntimeSummary({
   message,
   evidenceOpen,
   runtimeOverview,
+  runtimeObjects,
   onEvidenceToggle,
 }: {
   message: ConsoleMessage;
   evidenceOpen: boolean;
   runtimeOverview?: RuntimeOverview;
+  runtimeObjects: RuntimeObject[];
   onEvidenceToggle: () => void;
 }) {
   const signals = runtimeOverview?.availableSignals ?? [];
+  const segments = buildRuntimeSegments(runtimeObjects);
 
   return (
     <div className="mb-3 rounded-lg border border-line bg-panel p-3">
@@ -155,6 +162,13 @@ function AssistantRuntimeSummary({
         <SummaryCell label="Tool" value={runtimeOverview?.currentTool ?? 'None'} />
         <SummaryCell label="Latest Event" value={runtimeOverview?.latestEvent ?? 'Waiting'} />
       </div>
+      {segments.length > 0 && (
+        <div className="mt-3 grid gap-1.5">
+          {segments.map((segment) => (
+            <RuntimeSegment key={segment.id} segment={segment} />
+          ))}
+        </div>
+      )}
       <p className="mt-2 text-xs leading-5 text-muted">{summarizeAssistant(message.content)}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {signals.map((signal) => (
@@ -165,6 +179,74 @@ function AssistantRuntimeSummary({
       </div>
     </div>
   );
+}
+
+interface RuntimeSegmentModel {
+  id: string;
+  label: string;
+  title: string;
+  detail: string;
+  status: RuntimeObject['status'];
+  tone: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+}
+
+function RuntimeSegment({ segment }: { segment: RuntimeSegmentModel }) {
+  return (
+    <div className="grid grid-cols-[72px_minmax(0,1fr)_72px] items-center gap-2 rounded-md border border-line bg-white px-2 py-1.5">
+      <Badge tone={segment.tone} className="justify-center px-1.5 py-0.5 text-[9px]">
+        {segment.label}
+      </Badge>
+      <div className="min-w-0">
+        <div className="truncate text-[11px] font-semibold text-ink">{segment.title}</div>
+        <div className="truncate text-[10px] text-muted">{segment.detail}</div>
+      </div>
+      <span className="justify-self-end font-mono text-[10px] text-muted">{segment.status}</span>
+    </div>
+  );
+}
+
+function buildRuntimeSegments(objects: RuntimeObject[]): RuntimeSegmentModel[] {
+  const segments = [
+    createSegment('plan', 'Plan', objects.find((object) => object.type === 'planner')),
+    createSegment('tool', 'Tool', latestOfType(objects, 'tool')),
+    createSegment('knowledge', 'Knowledge', objects.find((object) => object.type === 'knowledge')),
+    createSegment('memory', 'Memory', objects.find((object) => object.type === 'memory')),
+    createSegment('reflection', 'Reflect', objects.find((object) => object.type === 'reflection')),
+    createSegment('evaluation', 'Eval', objects.find((object) => object.type === 'evaluation')),
+    createSegment('answer', 'Answer', objects.find((object) => object.type === 'answer')),
+  ];
+
+  return segments.filter((segment): segment is RuntimeSegmentModel => Boolean(segment));
+}
+
+function createSegment(
+  id: string,
+  label: string,
+  object: RuntimeObject | undefined,
+): RuntimeSegmentModel | undefined {
+  if (!object) return undefined;
+  return {
+    id,
+    label,
+    title: object.title,
+    detail: object.summary,
+    status: object.status,
+    tone: getSegmentTone(object.status, object.type),
+  };
+}
+
+function latestOfType(objects: RuntimeObject[], type: RuntimeObject['type']): RuntimeObject | undefined {
+  return [...objects].reverse().find((object) => object.type === type);
+}
+
+function getSegmentTone(
+  status: RuntimeObject['status'],
+  type: RuntimeObject['type'],
+): 'neutral' | 'info' | 'success' | 'warning' | 'danger' {
+  if (status === 'failed') return 'danger';
+  if (status === 'running') return 'info';
+  if (status === 'success') return type === 'knowledge' ? 'warning' : 'success';
+  return 'neutral';
 }
 
 function SummaryCell({ label, value }: { label: string; value: string }) {

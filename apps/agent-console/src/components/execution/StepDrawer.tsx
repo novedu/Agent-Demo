@@ -2,26 +2,26 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { Button } from '../ui';
 import { StepDetail } from './StepDetail';
-import type { ExecutionNodeRecord } from './execution-model';
+import type { RuntimeObject } from '../../features/agent-console/runtime-object-model';
 
 interface StepDrawerProps {
-  node?: ExecutionNodeRecord;
+  object?: RuntimeObject;
   onClose: () => void;
 }
 
-export function StepDrawer({ node, onClose }: StepDrawerProps) {
+export function StepDrawer({ object, onClose }: StepDrawerProps) {
   useEffect(() => {
-    if (!node) return;
+    if (!object) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [node, onClose]);
+  }, [object, onClose]);
 
   return (
     <AnimatePresence>
-      {node && (
+      {object && (
         <>
           <motion.div
             className="fixed inset-0 z-30 bg-slate-950/20"
@@ -39,15 +39,17 @@ export function StepDrawer({ node, onClose }: StepDrawerProps) {
           >
             <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-5">
               <div>
-                <h2 className="text-base font-semibold leading-5 text-ink">{node.component}</h2>
-                <p className="text-xs text-muted">Overview, input, output, reasoning, trace and raw JSON.</p>
+                <h2 className="text-base font-semibold leading-5 text-ink">{object.title}</h2>
+                <p className="text-xs text-muted">
+                  RuntimeObject · {object.type} · input, output, reasoning, trace and raw JSON.
+                </p>
               </div>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 Close
               </Button>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
-              <StepDetail node={node} />
+              <StepDetail object={object} />
             </div>
           </motion.aside>
         </>

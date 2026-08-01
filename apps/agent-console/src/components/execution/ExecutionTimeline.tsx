@@ -8,9 +8,11 @@ import {
   getStatusColor,
   type ExecutionNodeRecord,
 } from './execution-model';
+import type { RuntimeObject } from '../../features/agent-console/runtime-object-model';
 
 interface ExecutionTimelineProps {
   nodes: ExecutionNodeRecord[];
+  runtimeObjects?: RuntimeObject[];
   activeNodeId?: string;
   onSelectNode: (node: ExecutionNodeRecord) => void;
   onStart?: () => void;
@@ -29,12 +31,23 @@ const flowKinds = new Set([
 
 export function ExecutionTimeline({
   nodes,
+  runtimeObjects,
   activeNodeId,
   onSelectNode,
   onStart,
 }: ExecutionTimelineProps) {
-  const flowNodes = useMemo(() => nodes.filter((node) => flowKinds.has(node.kind)), [nodes]);
+  const flowObjects = useMemo(
+    () => (runtimeObjects ?? nodes.map(toRuntimeObjectFallback)).filter((object) => flowKinds.has(object.sourceNode.kind)),
+    [nodes, runtimeObjects],
+  );
+  const [filter, setFilter] = useState<TimelineFilter>('all');
+  const [query, setQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | undefined>(activeNodeId);
+  const visibleObjects = useMemo(
+    () => flowObjects.filter((object) => matchesFilter(object, filter) && matchesQuery(object, query)),
+    [filter, flowObjects, query],
+  );
+  const spanTree = useMemo(() => visibleObjects.map(toTimelineSpanModel), [visibleObjects]);
 
   useEffect(() => {
     if (activeNodeId) setExpandedId(activeNodeId);
@@ -43,35 +56,48 @@ export function ExecutionTimeline({
   return (
     <Panel
       title="Debug Timeline"
-      description={flowNodes.length ? 'Runtime flow trace' : 'Runtime flow preview'}
+      description={flowObjects.length ? 'Trace spans from runtime objects' : 'Runtime flow preview'}
       className="h-full rounded-none border-0 shadow-none"
       bodyClassName="min-h-0 overflow-hidden p-0"
       actions={
-        <div className="flex shrink-0 items-center gap-1">
-          <TimelineAction>Live</TimelineAction>
-          <TimelineAction>Filter</TimelineAction>
-          <TimelineAction>Search</TimelineAction>
-        </div>
+        <TimelineToolbar
+          filter={filter}
+          query={query}
+          visibleCount={visibleObjects.length}
+          totalCount={flowObjects.length}
+          onFilterChange={setFilter}
+          onQueryChange={setQuery}
+        />
       }
     >
-      {flowNodes.length ? (
+      {flowObjects.length ? (
         <div className="h-full min-h-0 overflow-y-auto px-3 py-2">
+          {visibleObjects.length === 0 ? (
+            <div className="flex h-full min-h-0 items-center justify-center text-center">
+              <div>
+                <div className="text-xs font-semibold text-ink">No spans match this filter</div>
+                <p className="mt-1 text-[10px] text-muted">Adjust search or filter to inspect runtime spans.</p>
+              </div>
+            </div>
+          ) : (
           <div className="relative">
             <div className="absolute bottom-4 left-[82px] top-4 w-px bg-line" />
-            {flowNodes.map((node, index) => (
+            {spanTree.map(({ object, depth }, index) => (
               <TimelineSpan
-                key={node.id}
-                node={node}
+                key={object.id}
+                object={object}
+                depth={depth}
                 index={index}
-                active={node.id === activeNodeId}
-                expanded={node.id === expandedId}
+                active={object.id === activeNodeId}
+                expanded={object.id === expandedId}
                 onSelect={() => {
-                  onSelectNode(node);
-                  setExpandedId((value) => (value === node.id ? undefined : node.id));
+                  onSelectNode(object.sourceNode);
+                  setExpandedId((value) => (value === object.id ? undefined : object.id));
                 }}
               />
             ))}
           </div>
+          )}
         </div>
       ) : (
         <EmptyFlow onStart={onStart} />
@@ -80,31 +106,77 @@ export function ExecutionTimeline({
   );
 }
 
-function TimelineAction({ children }: { children: string }) {
+type TimelineFilter =
+  | 'all'
+  | 'running'
+  | 'failed'
+  | 'tool'
+  | 'knowledge'
+  | 'memory'
+  | 'reflection'
+  | 'evaluation';
+
+function TimelineToolbar({
+  filter,
+  query,
+  visibleCount,
+  totalCount,
+  onFilterChange,
+  onQueryChange,
+}: {
+  filter: TimelineFilter;
+  query: string;
+  visibleCount: number;
+  totalCount: number;
+  onFilterChange: (value: TimelineFilter) => void;
+  onQueryChange: (value: string) => void;
+}) {
   return (
-    <button
-      type="button"
-      className="inline-flex h-6 cursor-pointer items-center rounded-md border border-line bg-white px-2 text-[10px] font-medium text-muted transition-colors duration-200 hover:bg-panel hover:text-ink"
-    >
-      {children}
-    </button>
+    <div className="flex min-w-0 shrink-0 items-center gap-1">
+      <span className="hidden rounded-md border border-line bg-white px-2 py-1 font-mono text-[10px] text-muted xl:inline-flex">
+        live {visibleCount}/{totalCount}
+      </span>
+      <select
+        value={filter}
+        onChange={(event) => onFilterChange(event.target.value as TimelineFilter)}
+        className="h-6 cursor-pointer rounded-md border border-line bg-white px-1.5 text-[10px] font-medium text-muted outline-none transition-colors duration-200 hover:bg-panel focus:border-accent"
+      >
+        <option value="all">All</option>
+        <option value="running">Running</option>
+        <option value="failed">Failed</option>
+        <option value="tool">Tool</option>
+        <option value="knowledge">RAG</option>
+        <option value="memory">Memory</option>
+        <option value="reflection">Reflection</option>
+        <option value="evaluation">Eval</option>
+      </select>
+      <input
+        value={query}
+        onChange={(event) => onQueryChange(event.target.value)}
+        placeholder="Search"
+        className="h-6 w-20 rounded-md border border-line bg-white px-2 text-[10px] text-ink outline-none transition-colors duration-200 placeholder:text-muted hover:bg-panel focus:border-accent xl:w-28"
+      />
+    </div>
   );
 }
 
 function TimelineSpan({
-  node,
+  object,
+  depth,
   index,
   active,
   expanded,
   onSelect,
 }: {
-  node: ExecutionNodeRecord;
+  object: RuntimeObject;
+  depth: number;
   index: number;
   active: boolean;
   expanded: boolean;
   onSelect: () => void;
 }) {
-  const color = getStatusColor(node.status);
+  const color = getStatusColor(object.status);
+  const node = object.sourceNode;
 
   return (
     <motion.article
@@ -130,20 +202,21 @@ function TimelineSpan({
             style={{ backgroundColor: color }}
           />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0" style={{ paddingLeft: `${depth * 12}px` }}>
           <div className="flex items-center gap-2">
+            {depth > 0 && <span className="font-mono text-[10px] text-muted">+</span>}
             <Badge tone={getTone(node.kind)} className="px-1.5 py-0.5 text-[9px]">
               {getKindLabel(node.kind)}
             </Badge>
-            <span className="truncate text-xs font-semibold text-ink">{node.component}</span>
-            <ExecutionStatus status={node.status} />
+            <span className="truncate text-xs font-semibold text-ink">{object.title}</span>
+            <ExecutionStatus status={object.status} />
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted">
-            <span>{formatDuration(node.duration)}</span>
-            <span>tokens {readMetric(node.metadata, 'tokenCount') ?? '0'}</span>
-            <span>retry {readMetric(node.metadata, 'retryCount') ?? '0'}</span>
+            <span>{formatDuration(object.duration)}</span>
+            <span>tokens {object.tokenCount ?? 0}</span>
+            <span>retry {object.retryCount ?? 0}</span>
           </div>
-          <p className="mt-1 line-clamp-1 text-[10px] leading-4 text-muted">{node.summary}</p>
+          <p className="mt-1 line-clamp-1 text-[10px] leading-4 text-muted">{object.summary}</p>
         </div>
       </button>
 
@@ -157,16 +230,67 @@ function TimelineSpan({
             className="overflow-hidden pl-[100px] pr-2"
           >
             <div className="mb-2 grid gap-2 rounded-lg border border-line bg-white p-2 lg:grid-cols-2">
-              <JsonViewer title="Input" value={node.input ?? node.arguments} collapsed />
-              <JsonViewer title="Output" value={node.output} collapsed />
-              <JsonViewer title="Metadata" value={node.metadata} collapsed />
-              <JsonViewer title="Trace" value={node.trace} collapsed />
+              <JsonViewer title="Input" value={object.input ?? object.arguments} collapsed />
+              <JsonViewer title="Output" value={object.output} collapsed />
+              <JsonViewer title="Metadata" value={object.metadata} collapsed />
+              <JsonViewer title="Trace" value={object.trace} collapsed />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </motion.article>
   );
+}
+
+function toRuntimeObjectFallback(node: ExecutionNodeRecord): RuntimeObject {
+  return {
+    id: node.id,
+    type: node.kind === 'rag' ? 'knowledge' : node.kind === 'llm' ? 'answer' : node.kind,
+    title: node.component,
+    status: node.status,
+    summary: node.summary,
+    input: node.input,
+    output: node.output,
+    arguments: node.arguments,
+    metadata: node.metadata,
+    trace: node.trace,
+    duration: node.duration,
+    startTime: node.startTime,
+    endTime: node.endTime,
+    sourceNode: node,
+  };
+}
+
+function matchesFilter(object: RuntimeObject, filter: TimelineFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'running') return object.status === 'running';
+  if (filter === 'failed') return object.status === 'failed';
+  return object.type === filter;
+}
+
+function matchesQuery(object: RuntimeObject, query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return true;
+  return [
+    object.title,
+    object.summary,
+    object.type,
+    object.status,
+    object.sourceNode.kind,
+  ].some((value) => value.toLowerCase().includes(normalizedQuery));
+}
+
+function toTimelineSpanModel(object: RuntimeObject): { object: RuntimeObject; depth: number } {
+  return { object, depth: getTimelineDepth(object.type) };
+}
+
+function getTimelineDepth(type: RuntimeObject['type']): number {
+  if (type === 'planner') return 0;
+  if (type === 'workflow' || type === 'knowledge') return 1;
+  if (type === 'tool') return 2;
+  if (type === 'memory' || type === 'reflection') return 3;
+  if (type === 'evaluation') return 4;
+  return 5;
 }
 
 function EmptyFlow({ onStart }: { onStart?: () => void }) {
@@ -226,11 +350,6 @@ function getTone(kind: ExecutionNodeRecord['kind']): 'neutral' | 'info' | 'succe
   if (kind === 'memory') return 'neutral';
   if (kind === 'evaluation' || kind === 'reflection' || kind === 'planner') return 'info';
   return 'neutral';
-}
-
-function readMetric(metadata: Record<string, unknown> | undefined, key: string): string | undefined {
-  const value = metadata?.[key];
-  return typeof value === 'number' || typeof value === 'string' ? String(value) : undefined;
 }
 
 function formatDuration(duration?: number): string {
