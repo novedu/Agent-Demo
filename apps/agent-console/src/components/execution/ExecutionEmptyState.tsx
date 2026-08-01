@@ -1,6 +1,4 @@
 import { motion } from 'framer-motion';
-import type { ReactNode } from 'react';
-import { AgentIcon, SparkIcon } from '../ui';
 
 interface ExecutionEmptyStateProps {
   onStart: () => void;
@@ -23,7 +21,7 @@ export function ExecutionEmptyState({ onStart }: ExecutionEmptyStateProps) {
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
         <div className="flex items-center gap-2.5">
-          <span className="text-lg">👋</span>
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
           <h2 className="text-base font-semibold text-ink">Welcome to Agent Studio</h2>
         </div>
         <p className="max-w-md text-center text-xs leading-5 text-muted">

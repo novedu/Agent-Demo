@@ -16,7 +16,6 @@ export function TopBar() {
 
   const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
   const currentTask = latestUserMessage?.content;
-  const hasTaskActivity = status !== 'idle' || events.length > 0;
 
   const tokens = events.reduce(
     (sum: number, event: { payload?: unknown }) => sum + readTokenCount(event.payload),
@@ -54,8 +53,8 @@ export function TopBar() {
 
           {/* Status pill */}
           <div className="flex items-center gap-1 rounded-full border border-line bg-panel px-1.5 py-0.5">
-            <span className="h-1 w-1 rounded-full bg-emerald-500" />
-            <span className="text-[10px] font-semibold text-ink">Ready</span>
+            <span className={getStatusDot(status)} />
+            <span className="text-[10px] font-semibold text-ink">{getStatusLabel(status)}</span>
           </div>
         </div>
 
@@ -71,16 +70,30 @@ export function TopBar() {
         </div>
       </div>
 
-      {/* Metrics row */}
+      {/* Runtime status row */}
       <div className="flex h-5 items-center justify-between border-t border-line bg-slate-50/60 px-3 text-[9px]">
         <div className="flex items-center gap-2 overflow-hidden">
-          <Metric label="STATUS" value={status} tone={getStatusTone(status)} />
-          <Metric label="TASK" value={currentTask ? truncate(currentTask, 18) : '—'} />
-          <Metric label="STEP" value={currentStep ?? plan?.steps[0]?.id ?? '—'} />
-          <Metric label="PROGRESS" value={`${getProgress(events, plan)}%`} />
-          <Metric label="DURATION" value={formatDuration(duration)} />
-          <Metric label="TOKENS" value={tokens > 0 ? tokens.toLocaleString() : '0'} />
-          <Metric label="COST" value={formatCost(estimatedCost)} />
+          {status === 'idle' ? (
+            <>
+              <Metric label="RUNTIME" value="ready" tone="success" />
+              <Metric label="TASK" value="waiting for chat input" />
+              <Metric label="NEXT" value="plan · tool · rag · memory · answer" />
+            </>
+          ) : (
+            <>
+              <Metric label="STATUS" value={status} tone={getStatusTone(status)} />
+              <Metric label="TASK" value={currentTask ? truncate(currentTask, 24) : 'running'} />
+              <Metric label="STEP" value={currentStep ?? plan?.steps[0]?.id ?? 'planning'} />
+              <Metric label="PROGRESS" value={`${getProgress(events, plan)}%`} />
+              {status === 'success' && (
+                <>
+                  <Metric label="DURATION" value={formatDuration(duration)} />
+                  <Metric label="TOKENS" value={tokens > 0 ? tokens.toLocaleString() : '0'} />
+                  <Metric label="COST" value={formatCost(estimatedCost)} />
+                </>
+              )}
+            </>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="flex items-center gap-1 text-muted">
@@ -152,6 +165,25 @@ function getStatusTone(status: string): 'success' | 'info' | 'danger' | 'default
   if (status === 'success' || status === 'completed') return 'success';
   if (status === 'error' || status === 'failed') return 'danger';
   return 'default';
+}
+
+function getStatusLabel(status: string): string {
+  if (status === 'running') return 'Agent running';
+  if (status === 'success') return 'Completed';
+  if (status === 'error') return 'Needs attention';
+  return 'Runtime ready';
+}
+
+function getStatusDot(status: string): string {
+  const tone =
+    status === 'running'
+      ? 'bg-blue-500 animate-pulse'
+      : status === 'success'
+        ? 'bg-emerald-500'
+        : status === 'error'
+          ? 'bg-rose-500'
+          : 'bg-emerald-500';
+  return `h-1 w-1 rounded-full ${tone}`;
 }
 
 function getProgress(events: unknown[], plan: { steps: unknown[] } | null): number {

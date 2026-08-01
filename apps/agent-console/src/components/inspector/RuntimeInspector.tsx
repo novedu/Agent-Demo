@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { Accordion, Badge, Card, JsonViewer } from '../ui';
-import { ChevronRightIcon } from '../ui/Icon';
 import { getKindLabel, getStatusTone } from '../execution/execution-model';
 import { EvaluationDashboard } from './EvaluationDashboard';
 import { KnowledgeExplorer } from './KnowledgeExplorer';
@@ -198,106 +197,84 @@ export function RuntimeInspector({
 
 function EmptyInspector() {
   return (
-    <div className="flex flex-col gap-2 p-3">
-      {/* Runtime Overview */}
-      <div className="rounded-lg border border-line bg-slate-50/60 p-2.5">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3">
+      <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+        <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+          Selected Runtime Object
+        </div>
+        <h3 className="mt-1 text-sm font-semibold text-ink">No object selected</h3>
+        <p className="mt-2 text-xs leading-5 text-muted">
+          Click a graph node or timeline span to inspect its input, output, reasoning,
+          trace metadata, evidence, memory writes, evaluation and logs.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-line bg-white p-3">
         <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Runtime Overview
+          Runtime Context
         </div>
-        <div className="space-y-1.5">
-          <OverviewRow icon="M" label="Model" value="Claude Sonnet 4" tone="text-blue-600" />
-          <OverviewRow icon="M" label="Memory" value="Working Memory" tone="text-slate-600" />
-          <OverviewRow icon="K" label="Knowledge" value="3 Sources" tone="text-amber-600" />
-          <OverviewRow icon="E" label="Evaluation" value="Ready" tone="text-emerald-600" />
-          <OverviewRow icon="E" label="Environment" value="Local" tone="text-slate-600" />
+        <div className="space-y-2">
+          <RuntimeContextRow label="Model" value="Claude Sonnet 4" />
+          <RuntimeContextRow label="Memory" value="Working Memory" />
+          <RuntimeContextRow label="Knowledge" value="3 Sources" />
+          <RuntimeContextRow label="Evaluation" value="Ready" />
+          <RuntimeContextRow label="Environment" value="Local" />
         </div>
       </div>
 
-      {/* Today's Runtime Stats */}
-      <div className="rounded-lg border border-line p-2.5">
+      <div className="rounded-lg border border-line bg-slate-50/60 p-3">
         <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Today&apos;s Runtime
+          Runtime Evidence Path
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <StatBlock label="Tasks" value="12" />
-          <StatBlock label="Success" value="96%" tone="text-emerald-600" />
-          <StatBlock label="Latency" value="1.2s" />
+        <div className="space-y-1.5 text-[11px] text-muted">
+          <EvidenceLine color="bg-blue-500" label="Graph selects the runtime object" />
+          <EvidenceLine color="bg-slate-400" label="Timeline proves when it happened" />
+          <EvidenceLine color="bg-amber-500" label="Knowledge proves where facts came from" />
+          <EvidenceLine color="bg-purple-500" label="Memory proves what was retained" />
+          <EvidenceLine color="bg-teal-500" label="Evaluation proves answer quality" />
         </div>
       </div>
 
-      {/* What you can inspect */}
-      <div className="rounded-lg border border-line bg-slate-50/60 p-2.5">
-        <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
-          What you can inspect
+      <div className="rounded-lg border border-line bg-white p-3">
+        <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
+          Inspector Contract
         </div>
-        <ul className="space-y-1 text-[11px] text-muted">
-          <li className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full bg-blue-500" />
-            Execution, input & output
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full bg-blue-500" />
-            Reasoning & trace
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full bg-amber-500" />
-            Evidence (knowledge / memory)
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full bg-teal-500" />
-            Evaluation & metrics
-          </li>
-        </ul>
-      </div>
-
-      {/* Quick Start */}
-      <div className="rounded-lg border border-line p-2.5">
-        <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Quick Start
-        </div>
-        <div className="space-y-0.5">
-          <QuickStartItem label="New empty task" hint="Start from scratch" />
-          <QuickStartItem label="Use a template" hint="Choose from examples" />
-          <QuickStartItem label="View documentation" hint="Learn how it works" />
+        <div className="space-y-2">
+          <RuntimeObjectPreview label="Planner" detail="Goal, generated plan, validation trace" />
+          <RuntimeObjectPreview label="Tool" detail="Arguments, result, duration, errors" />
+          <RuntimeObjectPreview label="Knowledge" detail="Chunks, source, score, citation links" />
+          <RuntimeObjectPreview label="Memory" detail="Working, semantic and episodic updates" />
+          <RuntimeObjectPreview label="Evaluation" detail="Score, criteria, feedback and spans" />
         </div>
       </div>
     </div>
   );
 }
 
-function OverviewRow({ icon, label, value, tone }: { icon: string; label: string; value: string; tone: string }) {
+function RuntimeContextRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-1.5">
-        <span className="flex h-4 w-4 items-center justify-center rounded text-[8px] font-bold bg-slate-200 text-slate-600">{icon}</span>
-        <span className="text-[11px] text-muted">{label}</span>
-      </div>
-      <span className={`font-mono text-[11px] font-semibold ${tone}`}>{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-panel px-2.5 py-2">
+      <span className="text-[11px] text-muted">{label}</span>
+      <span className="font-mono text-[11px] font-semibold text-ink">{value}</span>
     </div>
   );
 }
 
-function StatBlock({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function RuntimeObjectPreview({ label, detail }: { label: string; detail: string }) {
   return (
-    <div className="rounded-md border border-line bg-white p-1.5 text-center">
-      <div className={`font-mono text-sm font-bold ${tone ?? 'text-ink'}`}>{value}</div>
-      <div className="text-[8px] uppercase tracking-wider text-muted">{label}</div>
+    <div className="rounded-md border border-line bg-panel px-2.5 py-2">
+      <div className="text-xs font-semibold text-ink">{label}</div>
+      <div className="mt-0.5 text-[10px] leading-4 text-muted">{detail}</div>
     </div>
   );
 }
 
-function QuickStartItem({ label, hint }: { label: string; hint: string }) {
+function EvidenceLine({ color, label }: { color: string; label: string }) {
   return (
-    <button
-      type="button"
-      className="group flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left transition-colors hover:bg-panel"
-    >
-      <div>
-        <div className="text-xs font-medium text-ink">{label}</div>
-        <div className="text-[10px] text-muted">{hint}</div>
-      </div>
-      <ChevronRightIcon className="h-3.5 w-3.5 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
-    </button>
+    <div className="flex items-center gap-2">
+      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+      <span>{label}</span>
+    </div>
   );
 }
 

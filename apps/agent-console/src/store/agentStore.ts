@@ -45,14 +45,6 @@ interface AgentState {
   setStatus: (status: AgentState['status']) => void;
 }
 
-const welcomeMessage: Message = {
-  id: 'welcome',
-  role: 'assistant',
-  content:
-    'Agent Studio is ready. Describe a goal in natural language or pick a suggestion below to start.',
-  createdAt: Date.now(),
-};
-
 export const useAgentStore = create<AgentState>((set, get) => ({
   messages: [],
   events: [],

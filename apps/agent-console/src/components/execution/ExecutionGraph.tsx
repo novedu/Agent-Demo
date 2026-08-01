@@ -102,14 +102,6 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
           </button>
         </div>
       }
-      footer={
-        <div className="flex items-center justify-center gap-4 text-[9px] text-muted">
-          <LegendItem color="bg-slate-400" label="Pending" />
-          <LegendItem color="bg-blue-500" label="Running" />
-          <LegendItem color="bg-emerald-500" label="Completed" />
-          <LegendItem color="bg-rose-500" label="Failed" />
-        </div>
-      }
       className="h-full"
       bodyClassName="relative overflow-hidden p-0"
     >
@@ -221,13 +213,4 @@ function getConnectorPath(from: GraphPoint, to: GraphPoint): string {
   const endY = to.y + nodeHeight / 2;
   const middleX = startX + Math.max(32, (endX - startX) / 2);
   return `M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}`;
-}
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
-      {label}
-    </span>
-  );
 }

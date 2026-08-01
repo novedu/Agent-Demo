@@ -6,69 +6,62 @@ interface ExecutionGraphEmptyStateProps {
 
 export function ExecutionGraphEmptyState({ onStart }: ExecutionGraphEmptyStateProps) {
   const nodes = [
-    { label: 'Planner', color: 'border-blue-200 bg-blue-50 text-blue-600' },
-    { label: 'Tool', color: 'border-emerald-200 bg-emerald-50 text-emerald-600' },
-    { label: 'Knowledge', color: 'border-amber-200 bg-amber-50 text-amber-600' },
-    { label: 'Reflection', color: 'border-blue-200 bg-blue-50 text-blue-600' },
-    { label: 'Answer', color: 'border-emerald-200 bg-emerald-50 text-emerald-600' },
+    { label: 'Planner', color: 'text-blue-700' },
+    { label: 'Knowledge', color: 'text-amber-700' },
+    { label: 'Tool', color: 'text-emerald-700' },
+    { label: 'Memory', color: 'text-purple-700' },
+    { label: 'Reflection', color: 'text-blue-700' },
+    { label: 'Answer', color: 'text-emerald-700' },
   ];
 
   return (
     <Panel
       title="Runtime Graph"
-      description="Execution pipeline"
+      description="Compact dependency strip"
       className="h-full"
-      bodyClassName="flex min-h-0 flex-col items-center justify-center p-0"
+      bodyClassName="flex min-h-0 flex-col gap-3 p-3"
       actions={
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={onStart}
-            className="inline-flex h-5 items-center gap-1 rounded border border-accent bg-accent px-2 text-[10px] font-semibold text-white transition-colors hover:bg-blue-700"
-          >
-            <svg viewBox="0 0 10 10" className="h-2 w-2" fill="currentColor">
-              <path d="M2 1l6 4-6 4z" />
-            </svg>
-            Run
-          </button>
-        </div>
-      }
-      footer={
-        <div className="flex items-center justify-center gap-4 text-[9px] text-muted">
-          <LegendItem color="bg-slate-400" label="Pending" />
-          <LegendItem color="bg-blue-500" label="Running" />
-          <LegendItem color="bg-emerald-500" label="Completed" />
-          <LegendItem color="bg-rose-500" label="Failed" />
-        </div>
+        <button
+          type="button"
+          onClick={onStart}
+          className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md border border-accent bg-accent px-2.5 text-[10px] font-semibold text-white transition-colors duration-200 hover:bg-blue-700"
+        >
+          <svg viewBox="0 0 10 10" className="h-2 w-2" fill="currentColor">
+            <path d="M2 1l6 4-6 4z" />
+          </svg>
+          Run
+        </button>
       }
     >
-      {/* Compact pipeline flow - not a giant whiteboard */}
-      <div className="flex items-center gap-0 py-2">
-        {nodes.map((node, i) => (
-          <div key={node.label} className="flex items-center">
-            <div className="flex flex-col items-center gap-0.5">
-              <div className={`flex h-8 px-2.5 items-center rounded-md border text-[10px] font-semibold ${node.color}`}>
-                {node.label}
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-2">
+        <div className="flex items-center justify-between gap-3 text-[10px] text-muted">
+          <span>Planner</span>
+          <span className="font-mono">waiting</span>
+        </div>
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {nodes.map((node, index) => (
+            <div key={node.label} className="flex items-center gap-1">
+              <div className="flex h-7 items-center rounded-md border border-line bg-panel px-2 text-[10px] font-semibold text-ink">
+                <span className={node.color}>{node.label}</span>
               </div>
+              {index < nodes.length - 1 && (
+                <svg
+                  viewBox="0 0 20 8"
+                  className="h-2 w-4 shrink-0 text-lineStrong"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                >
+                  <path d="M2 4h14M13 1l4 3-4 3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
             </div>
-            {i < nodes.length - 1 && (
-              <svg viewBox="0 0 24 8" className="h-2 w-5 shrink-0 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1">
-                <path d="M2 4h18M18 1l4 3-4 3" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="12" cy="4" r="1" fill="currentColor" />
-              </svg>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
+        <div className="text-[10px] leading-4 text-muted">
+          When a task starts, this strip becomes the runtime dependency explanation.
+        </div>
       </div>
     </Panel>
-  );
-}
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1">
-      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
-      {label}
-    </span>
   );
 }

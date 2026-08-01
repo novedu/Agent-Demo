@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AgentIcon, Badge } from '../ui';
+import { AgentIcon, Badge, SparkIcon } from '../ui';
 import { InputBox } from './InputBox';
 import { MessageItem } from './MessageItem';
 import type { ConsoleMessage } from '../../types/agent';
@@ -47,7 +47,7 @@ export function ChatPanel({
     setAutoScroll(distanceFromBottom < 48);
   }
 
-  const showWelcome = !hasTaskActivity && messages.length === 0;
+  const showRuntimePreview = !hasTaskActivity;
 
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-col bg-white">
@@ -81,8 +81,8 @@ export function ChatPanel({
 
       {/* Main content area - flex-1 with min-h-0 */}
       <div className="relative min-h-0 flex-1 overflow-y-auto">
-        {showWelcome ? (
-          <WelcomeScreen onStartTask={onStartTask} />
+        {showRuntimePreview ? (
+          <RuntimePreview messages={messages} onStartTask={onStartTask} />
         ) : (
           <div
             ref={messageViewportRef}
@@ -103,7 +103,7 @@ export function ChatPanel({
           </div>
         )}
 
-        {!autoScroll && !showWelcome && (
+        {!autoScroll && !showRuntimePreview && (
           <button
             type="button"
             onClick={() => setAutoScroll(true)}
@@ -122,35 +122,90 @@ export function ChatPanel({
   );
 }
 
-const suggestions = [
-  { title: 'Analyze sales decline', detail: 'Analyze sales data and generate report' },
-  { title: 'Summarize today', detail: 'Summarize daily metrics and business progress' },
-  { title: 'Travel Planner', detail: 'Plan multi-city travel itinerary' },
-  { title: 'RAG QA', detail: 'Answer questions based on knowledge base' },
-];
+const runtimePreview = [
+  { label: 'Planner', detail: 'builds the task plan', tone: 'info' },
+  { label: 'Tool', detail: 'executes querySalesData', tone: 'success' },
+  { label: 'Knowledge', detail: 'retrieves related context', tone: 'warning' },
+  { label: 'Memory', detail: 'updates user and task memory', tone: 'neutral' },
+  { label: 'Reflection', detail: 'checks answer quality', tone: 'info' },
+  { label: 'Answer', detail: 'streams the final response', tone: 'success' },
+] as const;
 
-function WelcomeScreen({ onStartTask }: { onStartTask?: () => void }) {
+const suggestions = [
+  { title: 'Analyze sales decline', detail: 'Sales data + KPI + RAG + report' },
+  { title: 'RAG QA', detail: 'Retrieve policy context and answer' },
+  { title: 'Memory check', detail: 'Persist preference and task memory' },
+] as const;
+
+function RuntimePreview({
+  messages,
+  onStartTask,
+}: {
+  messages: ConsoleMessage[];
+  onStartTask?: () => void;
+}) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 p-3">
-      <div className="flex items-center gap-1.5">
-        <span className="text-base">👋</span>
-        <h2 className="text-sm font-semibold text-ink">Welcome to Agent Studio</h2>
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto p-4">
+      <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-700">
+              <SparkIcon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-semibold text-ink">
+                Agent Runtime is standing by
+              </h2>
+              <p className="mt-0.5 truncate text-xs text-muted">
+                The next message starts planning, tool execution, retrieval, memory, reflection and answer streaming.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[10px] font-semibold text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            Ready
+          </span>
+        </div>
       </div>
-      <p className="max-w-[200px] text-center text-[11px] leading-4 text-muted">
-        Start a task from the suggestions below or describe a goal in natural language.
-      </p>
-      <div className="grid grid-cols-2 gap-1.5 w-full max-w-[260px]">
-        {suggestions.map((s) => (
-          <button
-            key={s.title}
-            type="button"
-            onClick={onStartTask}
-            className="flex flex-col items-start gap-0.5 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-left transition-colors hover:border-lineStrong hover:bg-white"
-          >
-            <span className="text-[11px] font-semibold text-ink">{s.title}</span>
-            <span className="text-[9px] text-muted">{s.detail}</span>
-          </button>
+
+      <div className="mt-4 grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
+        {runtimePreview.map((item) => (
+          <div key={item.label} className="rounded-lg border border-line bg-white p-3">
+            <Badge tone={item.tone} className="mb-2">
+              {item.label}
+            </Badge>
+            <p className="text-xs leading-5 text-muted">{item.detail}</p>
+          </div>
         ))}
+      </div>
+
+      {messages.length > 0 && (
+        <div className="mt-4 space-y-3">
+          {messages.map((message) => (
+            <MessageItem key={message.id} message={message} onCitationFocus={undefined} />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-auto pt-4">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+          Run a complete runtime path
+        </div>
+        <div className="grid gap-2 md:grid-cols-3">
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion.title}
+              type="button"
+              onClick={onStartTask}
+              className="cursor-pointer rounded-lg border border-line bg-white p-3 text-left transition-colors duration-200 hover:border-blue-200 hover:bg-blue-50/50"
+            >
+              <span className="block text-xs font-semibold text-ink">{suggestion.title}</span>
+              <span className="mt-1 block text-[10px] leading-4 text-muted">
+                {suggestion.detail}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

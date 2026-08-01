@@ -146,10 +146,8 @@ export function AgentConsole() {
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-panel text-ink">
-      <section className="grid min-h-0 flex-1 gap-2 overflow-hidden p-2 grid-rows-[minmax(0,1fr)_auto]">
-        {/* Row 1: Chat (large) + Inspector (narrow) */}
-        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_300px] gap-2 xl:grid-cols-[minmax(0,1fr)_320px]">
-          {/* Chat - the primary surface */}
+      <section className="grid min-h-0 flex-1 gap-2 overflow-hidden p-2 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid min-h-0 min-w-0 gap-2 overflow-hidden grid-rows-[minmax(0,1fr)_160px_220px]">
           <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
             <ChatPanel
               messages={messages}
@@ -166,46 +164,6 @@ export function AgentConsole() {
             />
           </div>
 
-          {/* Inspector - always useful, even when idle */}
-          <div className="min-h-0 min-w-0 overflow-hidden">
-            <RuntimeInspector
-              currentNode={activeNode}
-              nodes={displayNodes}
-              events={events}
-              plan={plan}
-              state={state}
-              memory={memory}
-              citations={citations}
-              evaluation={evaluation}
-              tools={tools}
-              status={status}
-              isLoading={isLoading}
-              focusedObject={focusedRuntimeObject}
-              focusSection={focusedInspectorSection}
-              highlightedCitationId={highlightedCitationId}
-              highlightedMemoryId={highlightedMemoryId}
-              highlightedTraceId={highlightedTraceId}
-              onMemorySelect={handleMemorySelect}
-              onEvaluationTrace={handleEvaluationTrace}
-              onCitationSelect={handleCitationSelect}
-              onTraceSelect={handleTraceSelect}
-            />
-          </div>
-        </div>
-
-        {/* Row 2: Timeline (full width, compact) + Graph (small, side by side) */}
-        <div className="grid h-[200px] gap-2 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          {/* Timeline - DevTools style, compact */}
-          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
-            <ExecutionTimeline
-              nodes={displayNodes}
-              activeNodeId={activeNodeId}
-              onSelectNode={handleTimelineSelect}
-              onStart={() => start(defaultTask)}
-            />
-          </div>
-
-          {/* Graph - compact, not a giant whiteboard */}
           <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
             {hasTaskActivity ? (
               <ExecutionExplorer
@@ -217,6 +175,40 @@ export function AgentConsole() {
               <ExecutionGraphEmptyState onStart={() => start(defaultTask)} />
             )}
           </div>
+
+          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
+            <ExecutionTimeline
+              nodes={displayNodes}
+              activeNodeId={activeNodeId}
+              onSelectNode={handleTimelineSelect}
+              onStart={() => start(defaultTask)}
+            />
+          </div>
+        </div>
+
+        <div className="min-h-0 min-w-0 overflow-hidden">
+          <RuntimeInspector
+            currentNode={activeNode}
+            nodes={displayNodes}
+            events={events}
+            plan={plan}
+            state={state}
+            memory={memory}
+            citations={citations}
+            evaluation={evaluation}
+            tools={tools}
+            status={status}
+            isLoading={isLoading}
+            focusedObject={focusedRuntimeObject}
+            focusSection={focusedInspectorSection}
+            highlightedCitationId={highlightedCitationId}
+            highlightedMemoryId={highlightedMemoryId}
+            highlightedTraceId={highlightedTraceId}
+            onMemorySelect={handleMemorySelect}
+            onEvaluationTrace={handleEvaluationTrace}
+            onCitationSelect={handleCitationSelect}
+            onTraceSelect={handleTraceSelect}
+          />
         </div>
       </section>
 
