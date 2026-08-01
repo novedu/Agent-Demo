@@ -6,6 +6,7 @@ import {
   RuntimeIcon,
   ServerIcon,
 } from '@console/components/ui';
+import { getRuntimeEnvironmentLabel, getRuntimeModelLabel } from '@console/features/agent-console/runtime-overview';
 
 export function TopBar() {
   const status = useAgentStore((state) => state.status);
@@ -46,8 +47,8 @@ export function TopBar() {
 
           {/* Selectors */}
           <Selector icon={<RuntimeIcon className="h-2.5 w-2.5" />} label="Workspace" value="Runtime" />
-          <Selector icon={<CpuIcon className="h-2.5 w-2.5" />} label="Model" value="Claude Sonnet 4" />
-          <Selector icon={<ServerIcon className="h-2.5 w-2.5" />} label="Environment" value="local" />
+          <Selector icon={<CpuIcon className="h-2.5 w-2.5" />} label="Model" value={getRuntimeModelLabel()} />
+          <Selector icon={<ServerIcon className="h-2.5 w-2.5" />} label="Environment" value={getRuntimeEnvironmentLabel()} />
 
           <div className="h-3 w-px bg-line" />
 

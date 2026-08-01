@@ -3,6 +3,7 @@ import { AgentIcon, Badge, SparkIcon } from '../ui';
 import { InputBox } from './InputBox';
 import { MessageItem } from './MessageItem';
 import type { ConsoleMessage } from '../../types/agent';
+import type { RuntimeOverview } from '../../features/agent-console/runtime-overview';
 
 interface ChatPanelProps {
   messages: ConsoleMessage[];
@@ -16,6 +17,7 @@ interface ChatPanelProps {
   highlightedMessageId?: string;
   hasTaskActivity?: boolean;
   onStartTask?: () => void;
+  runtimeOverview: RuntimeOverview;
 }
 
 export function ChatPanel({
@@ -29,6 +31,7 @@ export function ChatPanel({
   highlightedMessageId,
   hasTaskActivity,
   onStartTask,
+  runtimeOverview,
 }: ChatPanelProps) {
   const messageViewportRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -69,20 +72,23 @@ export function ChatPanel({
       {/* Status chips - compact row */}
       <div className="shrink-0 border-b border-line bg-slate-50/60 px-3 py-1">
         <div className="flex flex-wrap items-center gap-1">
-          <RuntimeChip tone={isStreaming ? 'info' : 'neutral'} label={isStreaming ? 'Agent alive' : 'Agent ready'} />
-          <RuntimeChip tone="neutral" label={currentStep ? `Step · ${currentStep}` : 'Step · Waiting'} />
-          <RuntimeChip tone="success" label={currentTool ? `Tool · ${currentTool}` : 'Tool · None yet'} />
-          <RuntimeChip tone="warning" label="Knowledge" />
-          <RuntimeChip tone="neutral" label="Memory" />
-          <RuntimeChip tone="info" label="Reflection" />
-          <RuntimeChip tone="success" label="Answer" />
+          <RuntimeChip tone={isStreaming ? 'info' : 'success'} label={isStreaming ? 'Agent alive' : 'Runtime ready'} />
+          <RuntimeChip tone="neutral" label={`Step · ${currentStep ?? runtimeOverview.currentStep}`} />
+          <RuntimeChip tone={currentTool ? 'success' : 'neutral'} label={`Tool · ${currentTool ?? runtimeOverview.currentTool}`} />
+          <RuntimeChip tone={runtimeOverview.citationCount ? 'warning' : 'neutral'} label={`Knowledge · ${runtimeOverview.citationCount}`} />
+          <RuntimeChip tone={runtimeOverview.memoryCount ? 'info' : 'neutral'} label={`Memory · ${runtimeOverview.memoryCount}`} />
+          <RuntimeChip tone={runtimeOverview.evaluationScore !== undefined ? 'success' : 'neutral'} label={`Eval · ${formatScore(runtimeOverview.evaluationScore)}`} />
         </div>
       </div>
 
       {/* Main content area - flex-1 with min-h-0 */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {showRuntimePreview ? (
-          <RuntimePreview messages={messages} onStartTask={onStartTask} />
+          <RuntimePreview
+            messages={messages}
+            onStartTask={onStartTask}
+            runtimeOverview={runtimeOverview}
+          />
         ) : (
           <div
             ref={messageViewportRef}
@@ -97,6 +103,7 @@ export function ChatPanel({
                   isStreaming={isStreaming && message.id === lastMessageId}
                   highlighted={message.id === highlightedMessageId}
                   onCitationFocus={onCitationFocus}
+                  runtimeOverview={runtimeOverview}
                 />
               ))}
             </div>
@@ -122,15 +129,6 @@ export function ChatPanel({
   );
 }
 
-const runtimePreview = [
-  { label: 'Planner', detail: 'builds the task plan', tone: 'info' },
-  { label: 'Tool', detail: 'executes querySalesData', tone: 'success' },
-  { label: 'Knowledge', detail: 'retrieves related context', tone: 'warning' },
-  { label: 'Memory', detail: 'updates user and task memory', tone: 'neutral' },
-  { label: 'Reflection', detail: 'checks answer quality', tone: 'info' },
-  { label: 'Answer', detail: 'streams the final response', tone: 'success' },
-] as const;
-
 const suggestions = [
   { title: 'Analyze sales decline', detail: 'Sales data + KPI + RAG + report' },
   { title: 'RAG QA', detail: 'Retrieve policy context and answer' },
@@ -140,9 +138,11 @@ const suggestions = [
 function RuntimePreview({
   messages,
   onStartTask,
+  runtimeOverview,
 }: {
   messages: ConsoleMessage[];
   onStartTask?: () => void;
+  runtimeOverview: RuntimeOverview;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto p-4">
@@ -154,10 +154,10 @@ function RuntimePreview({
             </div>
             <div className="min-w-0">
               <h2 className="truncate text-sm font-semibold text-ink">
-                Agent Runtime is standing by
+                Ready to run an agent task
               </h2>
               <p className="mt-0.5 truncate text-xs text-muted">
-                The next message starts planning, tool execution, retrieval, memory, reflection and answer streaming.
+                {runtimeOverview.environment} · {runtimeOverview.model} · {runtimeOverview.taskLabel}
               </p>
             </div>
           </div>
@@ -169,12 +169,12 @@ function RuntimePreview({
       </div>
 
       <div className="mt-4 grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
-        {runtimePreview.map((item) => (
+        {runtimeOverview.availableSignals.map((item) => (
           <div key={item.label} className="rounded-lg border border-line bg-white p-3">
             <Badge tone={item.tone} className="mb-2">
               {item.label}
             </Badge>
-            <p className="text-xs leading-5 text-muted">{item.detail}</p>
+            <p className="text-xs leading-5 text-muted">{item.value}</p>
           </div>
         ))}
       </div>
@@ -182,7 +182,12 @@ function RuntimePreview({
       {messages.length > 0 && (
         <div className="mt-4 space-y-3">
           {messages.map((message) => (
-            <MessageItem key={message.id} message={message} onCitationFocus={undefined} />
+            <MessageItem
+              key={message.id}
+              message={message}
+              onCitationFocus={undefined}
+              runtimeOverview={runtimeOverview}
+            />
           ))}
         </div>
       )}
@@ -237,4 +242,8 @@ function RuntimeChip({
       {label}
     </span>
   );
+}
+
+function formatScore(score?: number): string {
+  return score === undefined ? 'pending' : `${Math.round(score * 100)}%`;
 }

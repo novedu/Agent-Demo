@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { PlayIcon, StopIcon } from '@console/components/ui';
+import { getRuntimeModelLabel } from '../../features/agent-console/runtime-overview';
 
 interface InputBoxProps {
   disabled?: boolean;
@@ -86,7 +87,7 @@ export function InputBox({ disabled, onSubmit, onStop }: InputBoxProps) {
             type="button"
             className="inline-flex h-5 items-center gap-1 rounded border border-line bg-white px-1.5 text-[10px] font-medium text-ink hover:bg-panel"
           >
-            <span>Claude Sonnet 4</span>
+            <span>{getRuntimeModelLabel()}</span>
             <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M3 4.5l2 2 2-2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

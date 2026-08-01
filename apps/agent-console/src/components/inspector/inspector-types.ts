@@ -8,6 +8,7 @@ import type {
   ToolCallRecord,
 } from '../../types/agent';
 import type { ExecutionNodeRecord, FocusedRuntimeObject } from '../execution/execution-model';
+import type { RuntimeOverview } from '../../features/agent-console/runtime-overview';
 
 export interface RuntimeInspectorProps {
   currentNode?: ExecutionNodeRecord;
@@ -21,6 +22,7 @@ export interface RuntimeInspectorProps {
   tools: ToolCallRecord[];
   status: string;
   isLoading: boolean;
+  runtimeOverview: RuntimeOverview;
   focusedObject?: FocusedRuntimeObject;
   focusSection?: string;
   highlightedCitationId?: string;

@@ -18,6 +18,7 @@ export function RuntimeInspector({
   tools,
   status,
   isLoading,
+  runtimeOverview,
   focusedObject,
   focusSection,
   highlightedCitationId,
@@ -185,7 +186,7 @@ export function RuntimeInspector({
             </div>
           </div>
         ) : (
-          <EmptyInspector />
+          <EmptyInspector runtimeOverview={runtimeOverview} />
         )}
       </motion.div>
 
@@ -196,7 +197,11 @@ export function RuntimeInspector({
   );
 }
 
-function EmptyInspector() {
+function EmptyInspector({
+  runtimeOverview,
+}: {
+  runtimeOverview: RuntimeInspectorProps['runtimeOverview'];
+}) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto">
       <section className="border-b border-line bg-blue-50/60 p-3">
@@ -205,8 +210,7 @@ function EmptyInspector() {
         </div>
         <h3 className="mt-1 text-sm font-semibold text-ink">No object selected</h3>
         <p className="mt-2 text-xs leading-5 text-muted">
-          Click a graph node or timeline span to inspect its input, output, reasoning,
-          trace metadata, evidence, memory writes, evaluation and logs.
+          Select a graph node or timeline span to inspect the runtime object that produced it.
         </p>
       </section>
 
@@ -215,37 +219,43 @@ function EmptyInspector() {
           Runtime Context
         </div>
         <div className="space-y-2">
-          <RuntimeContextRow label="Model" value="Claude Sonnet 4" />
-          <RuntimeContextRow label="Memory" value="Working Memory" />
-          <RuntimeContextRow label="Knowledge" value="3 Sources" />
-          <RuntimeContextRow label="Evaluation" value="Ready" />
-          <RuntimeContextRow label="Environment" value="Local" />
+          <RuntimeContextRow label="Model" value={runtimeOverview.model} />
+          <RuntimeContextRow label="Environment" value={runtimeOverview.environment} />
+          <RuntimeContextRow label="Task" value={truncate(runtimeOverview.taskLabel, 28)} />
+          <RuntimeContextRow label="Current step" value={runtimeOverview.currentStep} />
+          <RuntimeContextRow label="Progress" value={`${runtimeOverview.progress}%`} />
         </div>
       </section>
 
       <section className="border-b border-line bg-slate-50/60 p-3">
         <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Runtime Evidence Path
+          Live Runtime Signals
         </div>
-        <div className="space-y-1.5 text-[11px] text-muted">
-          <EvidenceLine color="bg-blue-500" label="Graph selects the runtime object" />
-          <EvidenceLine color="bg-slate-400" label="Timeline proves when it happened" />
-          <EvidenceLine color="bg-amber-500" label="Knowledge proves where facts came from" />
-          <EvidenceLine color="bg-purple-500" label="Memory proves what was retained" />
-          <EvidenceLine color="bg-teal-500" label="Evaluation proves answer quality" />
+        <div className="grid grid-cols-2 gap-2">
+          <RuntimeContextRow label="Events" value={String(runtimeOverview.eventCount)} />
+          <RuntimeContextRow label="Tools" value={String(runtimeOverview.toolCount)} />
+          <RuntimeContextRow label="Knowledge" value={String(runtimeOverview.citationCount)} />
+          <RuntimeContextRow label="Memory" value={String(runtimeOverview.memoryCount)} />
+          <RuntimeContextRow
+            label="Evaluation"
+            value={
+              runtimeOverview.evaluationScore === undefined
+                ? 'Pending'
+                : `${Math.round(runtimeOverview.evaluationScore * 100)}%`
+            }
+          />
+          <RuntimeContextRow label="Last event" value={runtimeOverview.latestEvent ?? 'None'} />
         </div>
       </section>
 
       <section className="bg-white p-3">
         <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Inspector Contract
+          Runtime Path
         </div>
         <div className="space-y-2">
-          <RuntimeObjectPreview label="Planner" detail="Goal, generated plan, validation trace" />
-          <RuntimeObjectPreview label="Tool" detail="Arguments, result, duration, errors" />
-          <RuntimeObjectPreview label="Knowledge" detail="Chunks, source, score, citation links" />
-          <RuntimeObjectPreview label="Memory" detail="Working, semantic and episodic updates" />
-          <RuntimeObjectPreview label="Evaluation" detail="Score, criteria, feedback and spans" />
+          {runtimeOverview.availableSignals.map((signal) => (
+            <RuntimeObjectPreview key={signal.label} label={signal.label} detail={signal.value} />
+          ))}
         </div>
       </section>
     </div>
@@ -270,15 +280,6 @@ function RuntimeObjectPreview({ label, detail }: { label: string; detail: string
   );
 }
 
-function EvidenceLine({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
-      <span>{label}</span>
-    </div>
-  );
-}
-
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-line bg-white p-2">
@@ -286,6 +287,10 @@ function Metric({ label, value }: { label: string; value: string }) {
       <div className="mt-0.5 truncate font-mono text-xs font-semibold text-ink">{value}</div>
     </div>
   );
+}
+
+function truncate(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
 }
 
 function getDefaultOpenSection(focusType?: string, focusSection?: string): string {

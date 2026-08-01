@@ -16,6 +16,7 @@ import type { AgentEvent, CitationRecord, MemoryRecord } from '../../types/agent
 import { RuntimeInspector } from '../../components/inspector';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
+import { buildRuntimeOverview } from './runtime-overview';
 
 const defaultTask = 'Analyze sales decline in East China and generate a report';
 
@@ -71,6 +72,35 @@ export function AgentConsole() {
         ? activeNode.component
         : undefined;
   const isLoading = status === 'running';
+  const runtimeOverview = useMemo(
+    () =>
+      buildRuntimeOverview({
+        messages,
+        events,
+        plan,
+        tools,
+        citations,
+        memory,
+        evaluation,
+        state,
+        status,
+        currentNodeComponent: currentNode?.component,
+        currentTool,
+      }),
+    [
+      citations,
+      currentNode?.component,
+      currentTool,
+      evaluation,
+      events,
+      memory,
+      messages,
+      plan,
+      state,
+      status,
+      tools,
+    ],
+  );
 
   useEffect(() => {
     if (!hasTaskActivity) {
@@ -164,6 +194,7 @@ export function AgentConsole() {
               highlightedMessageId={highlightedMessageId}
               hasTaskActivity={hasTaskActivity}
               onStartTask={() => start(defaultTask)}
+              runtimeOverview={runtimeOverview}
             />
           </div>
 
@@ -204,6 +235,7 @@ export function AgentConsole() {
             tools={tools}
             status={status}
             isLoading={isLoading}
+            runtimeOverview={runtimeOverview}
             focusedObject={focusedRuntimeObject}
             focusSection={focusedInspectorSection}
             highlightedCitationId={highlightedCitationId}
