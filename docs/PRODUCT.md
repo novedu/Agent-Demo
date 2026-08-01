@@ -22,6 +22,8 @@ It provides a unified engineering workspace for understanding:
 
 Agent Studio is **runtime-first**, not chat-first.
 
+In the v4 IDE Workspace, Chat is the primary interaction surface because it is where the user expresses the task and reads the agent result. Runtime remains the product; Chat is the editor-like surface that makes the runtime understandable.
+
 ---
 
 # Product Vision

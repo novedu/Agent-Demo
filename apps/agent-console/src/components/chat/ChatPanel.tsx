@@ -80,7 +80,7 @@ export function ChatPanel({
       </div>
 
       {/* Main content area - flex-1 with min-h-0 */}
-      <div className="relative min-h-0 flex-1 overflow-y-auto">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {showRuntimePreview ? (
           <RuntimePreview messages={messages} onStartTask={onStartTask} />
         ) : (

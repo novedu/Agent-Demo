@@ -102,7 +102,7 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
           </button>
         </div>
       }
-      className="h-full"
+      className="h-full rounded-none border-0 shadow-none"
       bodyClassName="relative overflow-hidden p-0"
     >
       <div

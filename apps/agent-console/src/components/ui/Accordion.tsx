@@ -14,26 +14,37 @@ interface AccordionProps {
   items: AccordionItem[];
   defaultOpenId?: string;
   focusId?: string;
+  variant?: 'card' | 'flush';
 }
 
-export function Accordion({ items, defaultOpenId, focusId }: AccordionProps) {
+export function Accordion({ items, defaultOpenId, focusId, variant = 'card' }: AccordionProps) {
   const [openId, setOpenId] = useState(defaultOpenId ?? items[0]?.id);
+  const isFlush = variant === 'flush';
 
   useEffect(() => {
     if (focusId) setOpenId(focusId);
   }, [focusId]);
 
   return (
-    <div className="space-y-3">
+    <div className={isFlush ? 'divide-y divide-line border-y border-line' : 'space-y-3'}>
       {items.map((item) => {
         const isOpen = item.id === openId;
 
         return (
-          <section key={item.id} className="overflow-hidden rounded-xl border border-line bg-white">
+          <section
+            key={item.id}
+            className={classNames(
+              'overflow-hidden bg-white',
+              isFlush ? '' : 'rounded-xl border border-line',
+            )}
+          >
             <button
               type="button"
               onClick={() => setOpenId(isOpen ? '' : item.id)}
-              className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-4 px-4 text-left transition-colors duration-200 hover:bg-panel focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent/20"
+              className={classNames(
+                'flex w-full cursor-pointer items-center justify-between gap-4 text-left transition-colors duration-200 hover:bg-panel focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent/20',
+                isFlush ? 'min-h-10 px-0' : 'min-h-11 px-4',
+              )}
             >
               <span className="truncate text-sm font-semibold text-ink">{item.title}</span>
               <span className="flex items-center gap-2 text-xs text-muted">
@@ -55,7 +66,7 @@ export function Accordion({ items, defaultOpenId, focusId }: AccordionProps) {
                   transition={{ duration: 0.2, ease: 'easeOut' }}
                   className="overflow-hidden border-t border-line"
                 >
-                  <div className="p-4">{item.children}</div>
+                  <div className={isFlush ? 'py-3' : 'p-4'}>{item.children}</div>
                 </motion.div>
               )}
             </AnimatePresence>

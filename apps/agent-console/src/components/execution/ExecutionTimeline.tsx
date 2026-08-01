@@ -44,7 +44,7 @@ export function ExecutionTimeline({
     <Panel
       title="Debug Timeline"
       description={flowNodes.length ? 'Runtime flow trace' : 'Runtime flow preview'}
-      className="h-full"
+      className="h-full rounded-none border-0 shadow-none"
       bodyClassName="min-h-0 overflow-hidden p-0"
       actions={
         <div className="flex shrink-0 items-center gap-1">

@@ -145,10 +145,13 @@ export function AgentConsole() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-panel text-ink">
-      <section className="grid min-h-0 flex-1 gap-2 overflow-hidden p-2 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid min-h-0 min-w-0 gap-2 overflow-hidden grid-rows-[minmax(0,1fr)_160px_220px]">
-          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
+    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-white text-ink">
+      <section className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div
+          className="grid min-h-0 min-w-0 overflow-hidden"
+          style={{ gridTemplateRows: 'minmax(0, 1fr) clamp(240px, 34vh, 320px)' }}
+        >
+          <div className="min-h-0 min-w-0 overflow-hidden bg-white">
             <ChatPanel
               messages={messages}
               isStreaming={isStreaming}
@@ -164,29 +167,31 @@ export function AgentConsole() {
             />
           </div>
 
-          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
-            {hasTaskActivity ? (
-              <ExecutionExplorer
+          <div className="grid min-h-0 min-w-0 overflow-hidden border-t border-line bg-white lg:grid-cols-[minmax(0,0.48fr)_minmax(0,0.52fr)] 2xl:grid-cols-[minmax(0,0.52fr)_minmax(0,0.48fr)]">
+            <div className="min-h-0 min-w-0 overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
+              {hasTaskActivity ? (
+                <ExecutionExplorer
+                  nodes={displayNodes}
+                  activeNodeId={activeNodeId}
+                  onSelectNode={handleGraphSelect}
+                />
+              ) : (
+                <ExecutionGraphEmptyState onStart={() => start(defaultTask)} />
+              )}
+            </div>
+
+            <div className="min-h-0 min-w-0 overflow-hidden">
+              <ExecutionTimeline
                 nodes={displayNodes}
                 activeNodeId={activeNodeId}
-                onSelectNode={handleGraphSelect}
+                onSelectNode={handleTimelineSelect}
+                onStart={() => start(defaultTask)}
               />
-            ) : (
-              <ExecutionGraphEmptyState onStart={() => start(defaultTask)} />
-            )}
-          </div>
-
-          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
-            <ExecutionTimeline
-              nodes={displayNodes}
-              activeNodeId={activeNodeId}
-              onSelectNode={handleTimelineSelect}
-              onStart={() => start(defaultTask)}
-            />
+            </div>
           </div>
         </div>
 
-        <div className="min-h-0 min-w-0 overflow-hidden">
+        <div className="min-h-0 min-w-0 overflow-hidden border-l border-line">
           <RuntimeInspector
             currentNode={activeNode}
             nodes={displayNodes}

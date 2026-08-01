@@ -143,7 +143,9 @@ Workspace order:
 ```text
 Chat
 ↓
-Execution
+Runtime Graph
+↓
+Debug Timeline
 ↓
 Evidence
 ```
@@ -151,6 +153,28 @@ Evidence
 Chat is always primary.
 Execution explains runtime behavior.
 Evidence supports interpretation and debugging.
+
+## v4 IDE Workspace Rules
+
+The Agent Workspace must feel like an IDE runtime surface, not a dashboard.
+
+Core regions:
+
+- Chat Workspace: primary editor-like surface
+- Runtime Graph: compact dependency canvas
+- Debug Timeline: docked runtime trace
+- Inspector: selected runtime object details
+
+Interaction priority:
+
+```text
+Chat drives the task
+Graph explains dependencies
+Timeline proves execution order
+Inspector explains the selected runtime object
+```
+
+Idle state should still communicate runtime readiness. Do not show large empty canvases.
 
 ## Runtime UX States
 
@@ -262,4 +286,3 @@ Rules:
 - No chat collapse
 - No double scroll regions
 - Graph and timeline must remain legible
-

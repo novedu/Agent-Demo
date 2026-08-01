@@ -18,7 +18,7 @@ export function ExecutionGraphEmptyState({ onStart }: ExecutionGraphEmptyStatePr
     <Panel
       title="Runtime Graph"
       description="Compact dependency strip"
-      className="h-full"
+      className="h-full rounded-none border-0 shadow-none"
       bodyClassName="flex min-h-0 flex-col gap-3 p-3"
       actions={
         <button

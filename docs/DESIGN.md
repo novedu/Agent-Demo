@@ -1,6 +1,6 @@
 # Agent Studio Design Philosophy
 
-Version: 2.2
+Version: 4.0
 
 ## Purpose
 
@@ -137,8 +137,39 @@ The right inspector is fixed and always describes the selected runtime object.
 
 Graph, Timeline, Evidence, Memory, Evaluation, and Logs must support the chat-led runtime experience. They must never compete with Chat as the primary workspace.
 
+## Workspace Principle
+
+Agent Workspace is not a dashboard.
+
+Do not compose the core workspace from multiple independent cards with equal weight.
+
+Core runtime regions should feel like IDE surfaces:
+
+- Chat is the editor-like primary surface.
+- Runtime Graph is a compact canvas strip.
+- Timeline is a docked debug flow.
+- Inspector is a continuous right-side object panel.
+
+Cards are only appropriate for empty states, quick start choices, small metric widgets, dialogs, and popovers.
+
+Avoid:
+
+- Card / Card / Card / Card composition
+- Large empty graph canvases
+- Dashboard KPI strips in the primary workspace
+- Equal visual weight across Chat, Graph, Timeline, and Inspector
+
+Prefer:
+
+- One connected workspace background
+- Border-first panels
+- Docked timeline
+- Compact graph strip
+- Object-focused inspector
+
 ## Related Documents
 
 - `PRODUCT.md` for product positioning and screen blueprint
 - `UX.md` for interaction, navigation, and state behavior
 - `DESIGN_SYSTEM.md` for component and implementation standards
+- `V4_IDE_WORKSPACE.md` for the v4 IDE workspace standard

@@ -93,3 +93,19 @@ Scope:
 - Permission
 - Audit
 - Observability
+
+## Agent Studio v4: IDE Workspace
+
+Goal: remove dashboard composition and make Agent Studio feel like an IDE-like runtime debugger.
+
+Scope:
+
+- De-dashboard Agent Workspace
+- Chat as the primary runtime surface
+- Runtime Graph as compact dependency strip
+- Debug Timeline as docked runtime trace
+- Inspector as continuous selected-object panel
+- Idle state with runtime readiness
+- Border-first, card-light workspace styling
+
+Outcome: a Cursor + LangSmith + Chrome DevTools style Agent Runtime IDE.
