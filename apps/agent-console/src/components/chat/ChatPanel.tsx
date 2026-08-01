@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AgentIcon, Badge, Button } from '../ui';
+import { AgentIcon, Badge } from '../ui';
 import { InputBox } from './InputBox';
 import { MessageItem } from './MessageItem';
 import type { ConsoleMessage } from '../../types/agent';
@@ -14,6 +14,8 @@ interface ChatPanelProps {
   onRegenerate?: () => void;
   onCitationFocus?: (citationId?: string) => void;
   highlightedMessageId?: string;
+  hasTaskActivity?: boolean;
+  onStartTask?: () => void;
 }
 
 export function ChatPanel({
@@ -23,9 +25,10 @@ export function ChatPanel({
   currentTool,
   onSubmit,
   onStop,
-  onRegenerate,
   onCitationFocus,
   highlightedMessageId,
+  hasTaskActivity,
+  onStartTask,
 }: ChatPanelProps) {
   const messageViewportRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -44,29 +47,28 @@ export function ChatPanel({
     setAutoScroll(distanceFromBottom < 48);
   }
 
+  const showWelcome = !hasTaskActivity && messages.length === 0;
+
   return (
-    <section className="relative flex h-full min-h-0 flex-col bg-white">
-      <header className="flex min-h-14 shrink-0 items-center justify-between gap-4 border-b border-line bg-white px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700">
-            <AgentIcon className="h-4 w-4" />
+    <section className="flex h-full min-h-0 min-w-0 flex-col bg-white">
+      {/* Header */}
+      <header className="flex h-10 shrink-0 items-center justify-between border-b border-line bg-white px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-5 w-5 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700">
+            <AgentIcon className="h-2.5 w-2.5" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold leading-5 text-ink">Chat Workspace</h2>
-            <p className="truncate text-xs text-muted">Goal input, streaming answer, citations and runtime summaries</p>
+            <h2 className="truncate text-sm font-semibold leading-4 text-ink">Chat Workspace</h2>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Badge tone={isStreaming ? 'info' : 'neutral'}>{isStreaming ? 'Streaming' : 'Ready'}</Badge>
-          {!isStreaming && onRegenerate && (
-            <Button variant="ghost" size="sm" onClick={onRegenerate}>
-              Regenerate
-            </Button>
-          )}
-        </div>
+        <Badge tone={isStreaming ? 'info' : 'neutral'} className="px-1.5 py-0.5 text-[10px]">
+          {isStreaming ? 'Streaming' : 'Ready'}
+        </Badge>
       </header>
-      <div className="border-b border-line bg-panel px-5 py-2.5">
-        <div className="flex flex-wrap items-center gap-2">
+
+      {/* Status chips - compact row */}
+      <div className="shrink-0 border-b border-line bg-slate-50/60 px-3 py-1">
+        <div className="flex flex-wrap items-center gap-1">
           <RuntimeChip tone={isStreaming ? 'info' : 'neutral'} label={isStreaming ? 'Agent alive' : 'Agent ready'} />
           <RuntimeChip tone="neutral" label={currentStep ? `Step · ${currentStep}` : 'Step · Waiting'} />
           <RuntimeChip tone="success" label={currentTool ? `Tool · ${currentTool}` : 'Tool · None yet'} />
@@ -76,32 +78,81 @@ export function ChatPanel({
           <RuntimeChip tone="success" label="Answer" />
         </div>
       </div>
-      <div
-        ref={messageViewportRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5"
-      >
-        {messages.map((message) => (
-          <MessageItem
-            key={message.id}
-            message={message}
-            isStreaming={isStreaming && message.id === lastMessageId}
-            highlighted={message.id === highlightedMessageId}
-            onCitationFocus={onCitationFocus}
-          />
+
+      {/* Main content area - flex-1 with min-h-0 */}
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
+        {showWelcome ? (
+          <WelcomeScreen onStartTask={onStartTask} />
+        ) : (
+          <div
+            ref={messageViewportRef}
+            onScroll={handleScroll}
+            className="h-full overflow-y-auto overscroll-contain p-3"
+          >
+            <div className="space-y-3">
+              {messages.map((message) => (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  isStreaming={isStreaming && message.id === lastMessageId}
+                  highlighted={message.id === highlightedMessageId}
+                  onCitationFocus={onCitationFocus}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!autoScroll && !showWelcome && (
+          <button
+            type="button"
+            onClick={() => setAutoScroll(true)}
+            className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted shadow-sm transition-colors duration-200 hover:text-ink"
+          >
+            Jump to latest
+          </button>
+        )}
+      </div>
+
+      {/* Input box - always at bottom */}
+      <div className="shrink-0">
+        <InputBox disabled={isStreaming} onSubmit={onSubmit} onStop={onStop} />
+      </div>
+    </section>
+  );
+}
+
+const suggestions = [
+  { title: 'Analyze sales decline', detail: 'Analyze sales data and generate report' },
+  { title: 'Summarize today', detail: 'Summarize daily metrics and business progress' },
+  { title: 'Travel Planner', detail: 'Plan multi-city travel itinerary' },
+  { title: 'RAG QA', detail: 'Answer questions based on knowledge base' },
+];
+
+function WelcomeScreen({ onStartTask }: { onStartTask?: () => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 p-3">
+      <div className="flex items-center gap-1.5">
+        <span className="text-base">👋</span>
+        <h2 className="text-sm font-semibold text-ink">Welcome to Agent Studio</h2>
+      </div>
+      <p className="max-w-[200px] text-center text-[11px] leading-4 text-muted">
+        Start a task from the suggestions below or describe a goal in natural language.
+      </p>
+      <div className="grid grid-cols-2 gap-1.5 w-full max-w-[260px]">
+        {suggestions.map((s) => (
+          <button
+            key={s.title}
+            type="button"
+            onClick={onStartTask}
+            className="flex flex-col items-start gap-0.5 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-left transition-colors hover:border-lineStrong hover:bg-white"
+          >
+            <span className="text-[11px] font-semibold text-ink">{s.title}</span>
+            <span className="text-[9px] text-muted">{s.detail}</span>
+          </button>
         ))}
       </div>
-      {!autoScroll && (
-        <button
-          type="button"
-          onClick={() => setAutoScroll(true)}
-          className="absolute bottom-24 left-1/2 z-10 -translate-x-1/2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-muted shadow-sm transition-colors duration-200 hover:text-ink"
-        >
-          Jump to latest
-        </button>
-      )}
-      <InputBox disabled={isStreaming} onSubmit={onSubmit} onStop={onStop} />
-    </section>
+    </div>
   );
 }
 
@@ -125,9 +176,9 @@ function RuntimeChip({
 
   return (
     <span
-      className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-[11px] font-medium transition-colors duration-200 ${toneClass}`}
+      className={`inline-flex h-5 items-center gap-1 rounded-full border px-2 text-[9px] font-medium transition-colors duration-200 ${toneClass}`}
     >
-      {tone === 'info' && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
+      {tone === 'info' && <span className="h-1 w-1 rounded-full bg-current animate-pulse" />}
       {label}
     </span>
   );

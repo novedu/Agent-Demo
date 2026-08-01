@@ -49,12 +49,12 @@ const welcomeMessage: Message = {
   id: 'welcome',
   role: 'assistant',
   content:
-    'Agent Console 已就绪。默认任务是：**分析华东区域销售下降原因，并生成报告**。点击发送任务即可观察完整 Agent 执行链路。',
+    'Agent Studio is ready. Describe a goal in natural language or pick a suggestion below to start.',
   createdAt: Date.now(),
 };
 
 export const useAgentStore = create<AgentState>((set, get) => ({
-  messages: [welcomeMessage],
+  messages: [],
   events: [],
   plan: null,
   tools: [],

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Badge, Card } from '../ui';
+import { Badge } from '../ui';
 import { classNames } from '../ui/classNames';
 import { ExecutionStatus } from './ExecutionStatus';
 import {
@@ -17,7 +17,6 @@ interface ExecutionNodeProps {
 
 export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
   const isRunning = node.status === 'running';
-  const tone = getNodeTone(node.status);
 
   return (
     <motion.button
@@ -26,38 +25,36 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
       onClick={() => onSelect(node)}
       className="w-full cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-accent/20"
     >
-      <Card
+      <div
         className={classNames(
-          'relative min-h-[92px] p-3 transition-colors duration-200',
-          tone.border,
-          tone.bg,
+          'relative min-h-[88px] rounded-lg border bg-white p-2.5 transition-colors duration-200',
           active
-            ? 'shadow-[0_0_0_2px_rgba(29,78,216,0.18),0_14px_32px_rgba(29,78,216,0.16)] ring-2 ring-accent/20'
-            : 'hover:border-lineStrong hover:bg-panel',
+            ? 'border-blue-300 bg-blue-50 shadow-[0_0_0_2px_rgba(29,78,216,0.12)]'
+            : 'border-line hover:border-lineStrong hover:bg-slate-50/60',
         )}
       >
         {isRunning && (
           <motion.span
-            className="absolute right-3 top-3 h-2 w-2 rounded-full bg-blue-500"
+            className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-blue-500"
             animate={{ opacity: [0.35, 1, 0.35], scale: [1, 1.35, 1] }}
             transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
-        <div className="flex items-start justify-between gap-3">
-          <Badge tone={getStatusTone(node.status)} className="h-8 w-8 justify-center px-0 font-mono">
+        <div className="flex items-start justify-between gap-2">
+          <Badge tone={getStatusTone(node.status)} className="h-7 w-7 justify-center px-0 font-mono text-[10px]">
             {getNodeIcon(node.kind)}
           </Badge>
           <ExecutionStatus status={node.status} />
         </div>
-        <div className="mt-2">
-          <div className="truncate text-sm font-semibold text-ink">{node.component}</div>
-          <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted">{node.summary}</p>
+        <div className="mt-1.5">
+          <div className="truncate text-xs font-semibold text-ink">{node.component}</div>
+          <div className="mt-0.5 truncate text-[10px] text-muted">{getKindLabel(node.kind)}</div>
         </div>
-        <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
-          <span>{getKindLabel(node.kind)}</span>
+        <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted">
           <span>{formatDuration(node.duration)}</span>
+          <span>{node.status === 'waiting' ? 'Pending' : ''}</span>
         </div>
-      </Card>
+      </div>
     </motion.button>
   );
 }
@@ -65,20 +62,4 @@ export function ExecutionNode({ node, active, onSelect }: ExecutionNodeProps) {
 function formatDuration(duration?: number): string {
   if (duration === undefined) return 'pending';
   return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
-}
-
-function getNodeTone(status: ExecutionNodeRecord['status']): { bg: string; border: string } {
-  if (status === 'success') {
-    return { bg: 'bg-emerald-50', border: 'border-emerald-200' };
-  }
-  if (status === 'running') {
-    return { bg: 'bg-blue-50', border: 'border-blue-200' };
-  }
-  if (status === 'failed') {
-    return { bg: 'bg-rose-50', border: 'border-rose-200' };
-  }
-  if (status === 'cancelled') {
-    return { bg: 'bg-amber-50', border: 'border-amber-200' };
-  }
-  return { bg: 'bg-white', border: 'border-line' };
 }

@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChatPanel } from '../../components/chat/ChatPanel';
 import {
-  ExecutionEmptyState,
   ExecutionExplorer,
+  ExecutionGraphEmptyState,
   ExecutionTimeline,
-  RuntimeHeader,
   StepDrawer,
 } from '../../components/execution';
 import {
   buildExecutionNodes,
   getCurrentNodeId,
-  getExecutionProgress,
   type FocusedRuntimeObject,
   type ExecutionNodeRecord,
 } from '../../components/execution/execution-model';
@@ -19,7 +17,7 @@ import { RuntimeInspector } from '../../components/inspector';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
 
-const defaultTask = '分析华东区域销售下降原因，并生成报告';
+const defaultTask = 'Analyze sales decline in East China and generate a report';
 
 export function AgentConsole() {
   const { start, stop } = useAgentStream();
@@ -55,7 +53,6 @@ export function AgentConsole() {
   const hasTaskActivity = status !== 'idle' || events.length > 0 || Boolean(latestUserMessage);
   const displayNodes = hasTaskActivity ? nodes : [];
   const currentNodeId = hasTaskActivity ? getCurrentNodeId(displayNodes) : undefined;
-  const progress = hasTaskActivity ? getExecutionProgress(displayNodes) : 0;
   const [selectedNode, setSelectedNode] = useState<ExecutionNodeRecord | undefined>();
   const [focusedRuntimeObject, setFocusedRuntimeObject] = useState<FocusedRuntimeObject>();
   const [focusedNodeId, setFocusedNodeId] = useState<string | undefined>(currentNodeId);
@@ -74,7 +71,6 @@ export function AgentConsole() {
         ? activeNode.component
         : undefined;
   const isLoading = status === 'running';
-  const runtimeMetrics = getRuntimeMetrics(displayNodes, events);
 
   useEffect(() => {
     if (!hasTaskActivity) {
@@ -150,24 +146,11 @@ export function AgentConsole() {
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-panel text-ink">
-      <RuntimeHeader
-        status={status}
-        progress={progress}
-        activeNode={activeNode?.component}
-        currentTool={currentTool}
-        currentStep={currentNode?.component}
-        currentTask={latestUserMessage?.content}
-        environment="local"
-        hasTaskActivity={hasTaskActivity}
-        duration={runtimeMetrics.duration}
-        tokenCount={runtimeMetrics.tokenCount}
-        estimatedCost={runtimeMetrics.estimatedCost}
-        onStop={stop}
-      />
-
-      <section className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="grid min-h-0 min-w-0 gap-4 overflow-hidden grid-rows-[minmax(0,1fr)_156px_208px]">
-          <div className="min-h-0 overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <section className="grid min-h-0 flex-1 gap-2 overflow-hidden p-2 grid-rows-[minmax(0,1fr)_auto]">
+        {/* Row 1: Chat (large) + Inspector (narrow) */}
+        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_300px] gap-2 xl:grid-cols-[minmax(0,1fr)_320px]">
+          {/* Chat - the primary surface */}
+          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
             <ChatPanel
               messages={messages}
               isStreaming={isStreaming}
@@ -178,10 +161,52 @@ export function AgentConsole() {
               onRegenerate={latestUserMessage ? () => start(latestUserMessage.content) : undefined}
               onCitationFocus={handleCitationFocus}
               highlightedMessageId={highlightedMessageId}
+              hasTaskActivity={hasTaskActivity}
+              onStartTask={() => start(defaultTask)}
             />
           </div>
 
-          <div className="min-h-0 overflow-hidden">
+          {/* Inspector - always useful, even when idle */}
+          <div className="min-h-0 min-w-0 overflow-hidden">
+            <RuntimeInspector
+              currentNode={activeNode}
+              nodes={displayNodes}
+              events={events}
+              plan={plan}
+              state={state}
+              memory={memory}
+              citations={citations}
+              evaluation={evaluation}
+              tools={tools}
+              status={status}
+              isLoading={isLoading}
+              focusedObject={focusedRuntimeObject}
+              focusSection={focusedInspectorSection}
+              highlightedCitationId={highlightedCitationId}
+              highlightedMemoryId={highlightedMemoryId}
+              highlightedTraceId={highlightedTraceId}
+              onMemorySelect={handleMemorySelect}
+              onEvaluationTrace={handleEvaluationTrace}
+              onCitationSelect={handleCitationSelect}
+              onTraceSelect={handleTraceSelect}
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Timeline (full width, compact) + Graph (small, side by side) */}
+        <div className="grid h-[200px] gap-2 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+          {/* Timeline - DevTools style, compact */}
+          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
+            <ExecutionTimeline
+              nodes={displayNodes}
+              activeNodeId={activeNodeId}
+              onSelectNode={handleTimelineSelect}
+              onStart={() => start(defaultTask)}
+            />
+          </div>
+
+          {/* Graph - compact, not a giant whiteboard */}
+          <div className="min-h-0 min-w-0 overflow-hidden rounded-lg border border-line bg-white">
             {hasTaskActivity ? (
               <ExecutionExplorer
                 nodes={displayNodes}
@@ -189,79 +214,15 @@ export function AgentConsole() {
                 onSelectNode={handleGraphSelect}
               />
             ) : (
-              <ExecutionEmptyState onStart={() => start(defaultTask)} />
+              <ExecutionGraphEmptyState onStart={() => start(defaultTask)} />
             )}
           </div>
-
-          <ExecutionTimeline
-            nodes={displayNodes}
-            activeNodeId={activeNodeId}
-            onSelectNode={handleTimelineSelect}
-          />
-        </div>
-
-        <div className="hidden min-h-0 overflow-hidden lg:block">
-          <RuntimeInspector
-            currentNode={activeNode}
-            nodes={displayNodes}
-            events={events}
-            plan={plan}
-            state={state}
-            memory={memory}
-            citations={citations}
-            evaluation={evaluation}
-            tools={tools}
-            status={status}
-            isLoading={isLoading}
-            focusedObject={focusedRuntimeObject}
-            focusSection={focusedInspectorSection}
-            highlightedCitationId={highlightedCitationId}
-            highlightedMemoryId={highlightedMemoryId}
-            highlightedTraceId={highlightedTraceId}
-            onMemorySelect={handleMemorySelect}
-            onEvaluationTrace={handleEvaluationTrace}
-            onCitationSelect={handleCitationSelect}
-            onTraceSelect={handleTraceSelect}
-          />
         </div>
       </section>
 
       <StepDrawer node={selectedNode} onClose={() => setSelectedNode(undefined)} />
     </main>
   );
-}
-
-function getRuntimeMetrics(
-  nodes: ExecutionNodeRecord[],
-  events: { timestamp: number; payload: unknown }[],
-) {
-  const timestamps = events.map((event) => event.timestamp).filter((timestamp) => timestamp > 0);
-  const duration =
-    timestamps.length >= 2 ? Math.max(...timestamps) - Math.min(...timestamps) : undefined;
-  const tokenCount = events.reduce((sum, event) => sum + readTokenCount(event.payload), 0);
-  const estimatedCost = tokenCount > 0 ? (tokenCount / 1000) * 0.002 : undefined;
-
-  return {
-    duration,
-    tokenCount: tokenCount > 0 ? tokenCount : undefined,
-    estimatedCost,
-    stepCount: nodes.length,
-  };
-}
-
-function readTokenCount(payload: unknown): number {
-  if (!isRecord(payload)) return 0;
-  const usage = payload.usage;
-  if (isRecord(usage)) {
-    const total = usage.total_tokens ?? usage.totalTokens;
-    return typeof total === 'number' ? total : 0;
-  }
-  const tokenCount = payload.tokenCount ?? payload.tokens;
-  return typeof tokenCount === 'number' ? tokenCount : 0;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }
 
 function findCitation(citations: CitationRecord[], citationId?: string): CitationRecord | undefined {
@@ -299,6 +260,10 @@ function readString(payload: unknown, key: string): string | undefined {
   if (!isRecord(payload)) return undefined;
   const value = payload[key];
   return typeof value === 'string' ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function setTimedHighlight(

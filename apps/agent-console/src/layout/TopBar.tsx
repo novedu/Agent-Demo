@@ -1,59 +1,192 @@
-import { useEffect, useState } from 'react';
-import { Button, RuntimeIcon, SearchIcon, SparkIcon, StatusTag } from '@console/components/ui';
 import { useAgentStore } from '@console/store/agentStore';
+import {
+  ChevronDownIcon,
+  CpuIcon,
+  PlusIcon,
+  RuntimeIcon,
+  ServerIcon,
+} from '@console/components/ui';
 
 export function TopBar() {
   const status = useAgentStore((state) => state.status);
-  const events = useAgentStore((state) => state.events.length);
+  const events = useAgentStore((state) => state.events);
   const currentStep = useAgentStore((state) => state.state?.currentStepId);
-  const currentTask = useAgentStore(
-    (state) => [...state.messages].reverse().find((message) => message.role === 'user')?.content,
-  );
-  const [isDark, setIsDark] = useState(false);
+  const messages = useAgentStore((state) => state.messages);
+  const plan = useAgentStore((state) => state.plan);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+  const currentTask = latestUserMessage?.content;
+  const hasTaskActivity = status !== 'idle' || events.length > 0;
+
+  const tokens = events.reduce(
+    (sum: number, event: { payload?: unknown }) => sum + readTokenCount(event.payload),
+    0,
+  );
+  const timestamps = events.map((event: { timestamp: number }) => event.timestamp).filter((t: number) => t > 0);
+  const duration =
+    timestamps.length >= 2 ? Math.max(...timestamps) - Math.min(...timestamps) : undefined;
+  const estimatedCost = tokens > 0 ? (tokens / 1000) * 0.002 : undefined;
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-white px-5">
-      <div className="flex min-w-0 items-center gap-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-900 bg-slate-950 text-white">
-          <RuntimeIcon className="h-5 w-5" />
+    <header className="flex shrink-0 flex-col border-b border-line bg-white">
+      {/* Top row */}
+      <div className="flex h-10 flex-nowrap items-center justify-between px-3">
+        <div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-900 bg-slate-950 text-white">
+              <RuntimeIcon className="h-3 w-3" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold leading-tight text-ink">Agent Studio</div>
+              <div className="truncate text-[9px] text-muted">Enterprise Runtime Studio</div>
+            </div>
+          </div>
+
+          <div className="h-3 w-px bg-line" />
+
+          {/* Selectors */}
+          <Selector icon={<RuntimeIcon className="h-2.5 w-2.5" />} label="Workspace" value="Runtime" />
+          <Selector icon={<CpuIcon className="h-2.5 w-2.5" />} label="Model" value="Claude Sonnet 4" />
+          <Selector icon={<ServerIcon className="h-2.5 w-2.5" />} label="Environment" value="local" />
+
+          <div className="h-3 w-px bg-line" />
+
+          {/* Status pill */}
+          <div className="flex items-center gap-1 rounded-full border border-line bg-panel px-1.5 py-0.5">
+            <span className="h-1 w-1 rounded-full bg-emerald-500" />
+            <span className="text-[10px] font-semibold text-ink">Ready</span>
+          </div>
         </div>
-        <div className="min-w-0">
-          <div className="truncate text-lg font-semibold leading-5 text-ink">Agent Studio</div>
-          <div className="truncate text-xs text-muted">IDE-like Runtime Console</div>
-        </div>
-        <div className="hidden h-8 items-center gap-2 rounded-full border border-line bg-panel px-3 text-xs text-muted lg:flex">
-          <SparkIcon className="h-4 w-4 text-accent" />
-          <span className="font-medium text-ink">Runtime alive</span>
-          <span className="text-muted">·</span>
-          <span className="max-w-[280px] truncate">{currentStep ? `Step: ${currentStep}` : 'Waiting for task'}</span>
+
+        <div className="flex min-w-0 items-center gap-2">
+          {/* New Task button */}
+          <button
+            type="button"
+            className="inline-flex h-6 items-center gap-1 rounded-md border border-accent bg-accent px-2 text-[10px] font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            <PlusIcon className="h-2.5 w-2.5" />
+            New Task
+          </button>
         </div>
       </div>
 
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="hidden h-9 min-w-[280px] items-center gap-2 rounded-lg border border-line bg-panel px-3 text-xs text-muted xl:flex">
-          <SearchIcon className="h-4 w-4" />
-          Jump to steps, traces, memory, evidence
+      {/* Metrics row */}
+      <div className="flex h-5 items-center justify-between border-t border-line bg-slate-50/60 px-3 text-[9px]">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Metric label="STATUS" value={status} tone={getStatusTone(status)} />
+          <Metric label="TASK" value={currentTask ? truncate(currentTask, 18) : '—'} />
+          <Metric label="STEP" value={currentStep ?? plan?.steps[0]?.id ?? '—'} />
+          <Metric label="PROGRESS" value={`${getProgress(events, plan)}%`} />
+          <Metric label="DURATION" value={formatDuration(duration)} />
+          <Metric label="TOKENS" value={tokens > 0 ? tokens.toLocaleString() : '0'} />
+          <Metric label="COST" value={formatCost(estimatedCost)} />
         </div>
-        <div className="hidden items-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-xs text-muted md:flex">
-          <span>Environment</span>
-          <span className="font-mono font-medium text-ink">local</span>
-        </div>
-        <StatusTag status={status} />
-        <span className="hidden font-mono text-xs text-muted lg:inline">{events} events</span>
-        <span className="hidden max-w-[220px] truncate font-mono text-xs text-muted xl:inline">
-          {currentTask ?? 'No running task'}
-        </span>
-        <Button variant="ghost" size="sm" onClick={() => setIsDark((value) => !value)}>
-          {isDark ? 'Light' : 'Dark'}
-        </Button>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-panel text-xs font-semibold text-ink">
-          RJ
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="flex items-center gap-1 text-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            SSE Connected
+          </span>
+          <div className="flex h-5 w-5 items-center justify-center rounded-full border border-line bg-panel text-[9px] font-semibold text-ink">
+            RJ
+          </div>
         </div>
       </div>
     </header>
   );
+}
+
+function Selector({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="flex h-6 items-center gap-1 rounded-md border border-line bg-panel px-1.5 text-[10px] text-muted transition-colors hover:border-lineStrong hover:bg-white"
+    >
+      <span className="text-muted">{icon}</span>
+      <span className="font-medium text-ink">{label}</span>
+      <span className="text-muted">·</span>
+      <span className="font-mono font-medium text-ink">{value}</span>
+      <ChevronDownIcon className="h-2.5 w-2.5 text-muted" />
+    </button>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: 'default' | 'success' | 'info' | 'warning' | 'danger';
+}) {
+  const toneClass =
+    tone === 'success'
+      ? 'text-emerald-600'
+      : tone === 'info'
+        ? 'text-blue-600'
+        : tone === 'warning'
+          ? 'text-amber-600'
+          : tone === 'danger'
+            ? 'text-rose-600'
+            : 'text-ink';
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="font-semibold tracking-wider text-muted">{label}</span>
+      <span className={`font-mono font-semibold ${toneClass}`}>{value}</span>
+    </div>
+  );
+}
+
+function getStatusTone(status: string): 'success' | 'info' | 'danger' | 'default' {
+  if (status === 'running') return 'info';
+  if (status === 'success' || status === 'completed') return 'success';
+  if (status === 'error' || status === 'failed') return 'danger';
+  return 'default';
+}
+
+function getProgress(events: unknown[], plan: { steps: unknown[] } | null): number {
+  if (!plan?.steps?.length) return 0;
+  const completed = events.filter((e) => {
+    const event = e as { type?: string };
+    return event.type?.includes('complete') || event.type?.includes('success');
+  }).length;
+  return Math.min(100, Math.round((completed / plan.steps.length) * 100));
+}
+
+function formatDuration(duration?: number): string {
+  if (duration === undefined) return '—';
+  if (duration < 1000) return `${duration}ms`;
+  return `${(duration / 1000).toFixed(1)}s`;
+}
+
+function formatCost(value?: number): string {
+  if (value === undefined) return '$0.0000';
+  return `$${value.toFixed(4)}`;
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function readTokenCount(payload: unknown): number {
+  if (!payload || typeof payload !== 'object') return 0;
+  const record = payload as Record<string, unknown>;
+  const usage = record.usage;
+  if (usage && typeof usage === 'object') {
+    const usageRecord = usage as Record<string, unknown>;
+    const total = usageRecord.total_tokens ?? usageRecord.totalTokens;
+    return typeof total === 'number' ? total : 0;
+  }
+  const tokenCount = record.tokenCount ?? record.tokens;
+  return typeof tokenCount === 'number' ? tokenCount : 0;
 }

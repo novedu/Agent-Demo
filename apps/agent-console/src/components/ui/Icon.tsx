@@ -203,3 +203,75 @@ export function SparkIcon(props: IconProps) {
     </BaseIcon>
   );
 }
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </BaseIcon>
+  );
+}
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </BaseIcon>
+  );
+}
+
+export function CpuIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" rx="1" />
+      <path d="M9 2v2" />
+      <path d="M15 2v2" />
+      <path d="M9 20v2" />
+      <path d="M15 20v2" />
+      <path d="M2 9h2" />
+      <path d="M2 15h2" />
+      <path d="M20 9h2" />
+      <path d="M20 15h2" />
+    </BaseIcon>
+  );
+}
+
+export function ServerIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <rect x="3" y="3" width="18" height="8" rx="2" />
+      <rect x="3" y="13" width="18" height="8" rx="2" />
+      <path d="M7 7h.01" />
+      <path d="M7 17h.01" />
+    </BaseIcon>
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </BaseIcon>
+  );
+}
+
+export function HelpIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </BaseIcon>
+  );
+}
+
+export function BookIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+    </BaseIcon>
+  );
+}

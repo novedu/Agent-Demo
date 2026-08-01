@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import type { PointerEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, CenterIcon, FitViewIcon, Panel, ZoomInIcon, ZoomOutIcon } from '../ui';
+import { FitViewIcon, Panel, ZoomInIcon, ZoomOutIcon } from '../ui';
 import { ExecutionNode } from './ExecutionNode';
 import {
   getStatusColor,
@@ -20,10 +20,10 @@ interface GraphPoint {
   y: number;
 }
 
-const nodeWidth = 168;
-const nodeHeight = 92;
-const graphHeight = 116;
-const gapX = 196;
+const nodeWidth = 156;
+const nodeHeight = 88;
+const graphHeight = 120;
+const gapX = 184;
 
 export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionGraphProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -40,16 +40,8 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
     activeRef.current.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
   }, [activeNodeId]);
 
-  function centerCurrentStep() {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-    window.setTimeout(() => {
-      activeRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
-    }, 40);
-  }
-
   function fitView() {
-    setScale(0.88);
+    setScale(0.85);
     setOffset({ x: 0, y: 0 });
     viewportRef.current?.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
   }
@@ -79,26 +71,43 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
   return (
     <Panel
       title="Runtime Graph"
-      description={activeNode ? `Current object: ${activeNode.component}` : 'Runtime dependency strip.'}
+      description={activeNode ? `Current object: ${activeNode.component}` : 'Execution & dependency graph'}
       actions={
-        <div className="flex shrink-0 items-center gap-2">
-          <Button size="sm" variant="ghost" aria-label="Zoom out" onClick={() => setScale((value) => Math.max(0.72, value - 0.12))}>
-            <ZoomOutIcon className="h-4 w-4" />
-          </Button>
-          <span className="w-12 text-center font-mono text-xs text-muted">
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => setScale((value) => Math.max(0.72, value - 0.12))}
+            className="flex h-5 w-5 items-center justify-center rounded border border-line bg-white text-muted hover:bg-panel"
+          >
+            <ZoomOutIcon className="h-2.5 w-2.5" />
+          </button>
+          <span className="w-8 text-center font-mono text-[10px] text-muted">
             {Math.round(scale * 100)}%
           </span>
-          <Button size="sm" variant="ghost" aria-label="Zoom in" onClick={() => setScale((value) => Math.min(1.35, value + 0.12))}>
-            <ZoomInIcon className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={fitView}>
-            <FitViewIcon className="h-4 w-4" />
-            Fit
-          </Button>
-          <Button size="sm" variant="secondary" onClick={centerCurrentStep}>
-            <CenterIcon className="h-4 w-4" />
-            Center
-          </Button>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => setScale((value) => Math.min(1.35, value + 0.12))}
+            className="flex h-5 w-5 items-center justify-center rounded border border-line bg-white text-muted hover:bg-panel"
+          >
+            <ZoomInIcon className="h-2.5 w-2.5" />
+          </button>
+          <button
+            type="button"
+            onClick={fitView}
+            className="flex h-5 w-5 items-center justify-center rounded border border-line bg-white text-muted hover:bg-panel"
+          >
+            <FitViewIcon className="h-2.5 w-2.5" />
+          </button>
+        </div>
+      }
+      footer={
+        <div className="flex items-center justify-center gap-4 text-[9px] text-muted">
+          <LegendItem color="bg-slate-400" label="Pending" />
+          <LegendItem color="bg-blue-500" label="Running" />
+          <LegendItem color="bg-emerald-500" label="Completed" />
+          <LegendItem color="bg-rose-500" label="Failed" />
         </div>
       }
       className="h-full"
@@ -137,12 +146,28 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
                   d={getConnectorPath(point, next)}
                   fill="none"
                   stroke={stroke}
-                  strokeWidth={next.node.status === 'running' ? 3 : 2}
+                  strokeWidth={next.node.status === 'running' ? 2.5 : 1.5}
                   strokeLinecap="round"
-                  strokeDasharray={next.node.status === 'waiting' ? '6 8' : undefined}
-                  initial={{ pathLength: 0, opacity: 0.35 }}
-                  animate={{ pathLength: 1, opacity: 0.92 }}
-                  transition={{ duration: 0.22 }}
+                  strokeDasharray={next.node.status === 'waiting' ? '4 6' : undefined}
+                  initial={{ pathLength: 0, opacity: 0.3 }}
+                  animate={{ pathLength: 1, opacity: 0.8 }}
+                  transition={{ duration: 0.25 }}
+                />
+              );
+            })}
+            {/* Connection dots */}
+            {graph.points.slice(0, -1).map((point, index) => {
+              const next = graph.points[index + 1];
+              const cx = (point.x + nodeWidth + next.x) / 2;
+              const cy = point.y + nodeHeight / 2;
+              return (
+                <circle
+                  key={`dot_${index}`}
+                  cx={cx}
+                  cy={cy}
+                  r={3}
+                  fill={getStatusColor(next.node.status)}
+                  opacity={0.6}
                 />
               );
             })}
@@ -173,7 +198,7 @@ export function ExecutionGraph({ nodes, activeNodeId, onSelectNode }: ExecutionG
 }
 
 function buildGraph(nodes: ExecutionNodeRecord[]): { points: GraphPoint[]; width: number; height: number } {
-  const lanes = [12];
+  const lanes = [14];
   const points = nodes.map((node, index) => {
     return {
       node,
@@ -184,7 +209,7 @@ function buildGraph(nodes: ExecutionNodeRecord[]): { points: GraphPoint[]; width
 
   return {
     points,
-    width: Math.max(760, 48 + Math.max(1, nodes.length) * gapX),
+    width: Math.max(680, 48 + Math.max(1, nodes.length) * gapX),
     height: graphHeight,
   };
 }
@@ -194,6 +219,15 @@ function getConnectorPath(from: GraphPoint, to: GraphPoint): string {
   const startY = from.y + nodeHeight / 2;
   const endX = to.x;
   const endY = to.y + nodeHeight / 2;
-  const middleX = startX + Math.max(48, (endX - startX) / 2);
+  const middleX = startX + Math.max(32, (endX - startX) / 2);
   return `M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}`;
+}
+
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+      {label}
+    </span>
+  );
 }
