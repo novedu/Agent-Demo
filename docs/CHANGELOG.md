@@ -147,7 +147,7 @@ Implemented:
 
 - Added root `README.md` with product positioning, architecture, routes, demo flow, setup, verification, and capability boundaries.
 - Added `docs/DEMO_SCRIPT.md` for interview walkthroughs and demo recordings.
-- Added `docs/PORTFOLIO_REVIEW.md` for portfolio framing, strengths, likely reviewer questions, and honest maturity assessment.
+- Added the portfolio review to `docs/archive/PORTFOLIO_REVIEW.md` as an internal historical note.
 - Clarified that Agent Studio is a portfolio-grade Enterprise Agent Runtime Studio MVP, not a fully production-ready enterprise AI platform.
 
 ## Milestone 3: Engineering Quality

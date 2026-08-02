@@ -13,5 +13,4 @@ apps/agent-console/vite.config.js
 apps/agent-console/vite.config.d.ts
 apps/agent-console/vitest.config.js
 apps/agent-console/vitest.config.d.ts
-!**/.env.example   # 保留所有目录下的环境变量示例文件
-!apps/agent-console/.env.example
+!**/.env.example

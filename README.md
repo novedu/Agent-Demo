@@ -153,6 +153,19 @@ Evaluation Center shows score, criteria, feedback, and quality review for the co
 | Runtime | Planner, WorkflowRunner, ToolExecutor, RAG, Memory, Reflection, Evaluation |
 | Shared Contracts | TypeScript shared-types package |
 
+## Documentation
+
+The project documentation is organized by responsibility:
+
+- [Product](docs/PRODUCT.md): positioning, users, information architecture, and roadmap context.
+- [Design](docs/DESIGN.md): visual principles and Runtime Workspace direction.
+- [UX](docs/UX.md): navigation, interaction, and runtime state transitions.
+- [Design System](docs/DESIGN_SYSTEM.md): shared tokens and component rules.
+- [Architecture](docs/ARCHITECTURE.md): frontend, server, runtime, and streaming boundaries.
+- [Demo Scripts](docs/DEMO_SCRIPT.md): 3-minute, 10-minute, and 30-minute walkthroughs.
+- [Contributing](docs/CONTRIBUTING.md): development flow and verification commands.
+- [Changelog](docs/CHANGELOG.md): implementation history.
+
 ## Folder Structure
 
 ```text

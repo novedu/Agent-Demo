@@ -362,7 +362,7 @@ Implemented:
 
 - Added `README.md`.
 - Added `docs/DEMO_SCRIPT.md`.
-- Added `docs/PORTFOLIO_REVIEW.md`.
+- Archived the portfolio review under `docs/archive/PORTFOLIO_REVIEW.md`.
 - Documented the primary demo path from `/agent` to Dashboard, Knowledge, Memory, Evaluation, Workflow, and Settings.
 - Clarified current real capabilities vs planned enterprise capabilities.
 
