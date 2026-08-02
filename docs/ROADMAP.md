@@ -159,7 +159,7 @@ Turn Dashboard from placeholder into a runtime overview page.
 
 Scope:
 
-Detailed specification: `docs/PHASE3_DASHBOARD.md`
+Historical specification: `docs/archive/phases/PHASE3_DASHBOARD.md`
 
 - Recent Tasks
 - Recent Failures
@@ -184,7 +184,7 @@ Turn Knowledge from supporting evidence into a real Knowledge Center.
 
 Scope:
 
-Detailed specification: `docs/PHASE4_KNOWLEDGE.md`
+Historical specification: `docs/archive/phases/PHASE4_KNOWLEDGE.md`
 
 - Knowledge Sources
 - Document list
@@ -208,7 +208,7 @@ Make memory observable, explainable, and useful for debugging.
 
 Scope:
 
-Detailed specification: `docs/PHASE5_MEMORY.md`
+Historical specification: `docs/archive/phases/PHASE5_MEMORY.md`
 
 - Working Memory
 - Semantic Memory
@@ -242,7 +242,7 @@ Make answer quality measurable across runs.
 
 Scope:
 
-Detailed specification: `docs/PHASE6_EVALUATION.md`
+Historical specification: `docs/archive/phases/PHASE6_EVALUATION.md`
 
 - Evaluation History
 - Score Trend
@@ -276,7 +276,7 @@ Move toward LangGraph Studio-style workflow authoring.
 
 Scope:
 
-Detailed specification: `docs/PHASE7_WORKFLOW.md`
+Historical specification: `docs/archive/phases/PHASE7_WORKFLOW.md`
 
 - Planner Graph
 - Workflow Graph
@@ -312,7 +312,7 @@ Prepare Agent Studio for enterprise usage after the core runtime product is stro
 
 Scope:
 
-Detailed specification: `docs/PHASE8_ENTERPRISE.md`
+Historical specification: `docs/archive/phases/PHASE8_ENTERPRISE.md`
 
 - Workspace
 - Team

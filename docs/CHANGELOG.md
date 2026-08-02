@@ -47,7 +47,7 @@ Status: implemented.
 
 Implemented:
 
-- Added `docs/PHASE3_DASHBOARD.md`.
+- Added `docs/archive/phases/PHASE3_DASHBOARD.md`.
 - Rebuilt `/dashboard` as a runtime overview instead of a placeholder.
 - Added typed task history API adapter for `GET /api/agent/tasks`.
 - Added typed retry adapter for `POST /api/agent/tasks/:taskId/retry`.
@@ -65,7 +65,7 @@ Status: implemented.
 
 Implemented:
 
-- Added `docs/PHASE4_KNOWLEDGE.md`.
+- Added `docs/archive/phases/PHASE4_KNOWLEDGE.md`.
 - Replaced `/knowledge` placeholder with a real Knowledge Center.
 - Added current-session RAG retrieval run view.
 - Added source summary panel.
@@ -81,7 +81,7 @@ Status: implemented.
 
 Implemented:
 
-- Added `docs/PHASE5_MEMORY.md`.
+- Added `docs/archive/phases/PHASE5_MEMORY.md`.
 - Replaced `/memory` placeholder with a real Memory Center.
 - Added current-session memory write timeline.
 - Added Working, Episodic, and Semantic memory grouping.
@@ -97,7 +97,7 @@ Status: implemented.
 
 Implemented:
 
-- Added `docs/PHASE6_EVALUATION.md`.
+- Added `docs/archive/phases/PHASE6_EVALUATION.md`.
 - Replaced `/evaluation` placeholder with a real Evaluation Center.
 - Added current-run quality scorecard.
 - Added criteria breakdown for completeness, accuracy, groundedness, and task completion.
@@ -113,7 +113,7 @@ Status: implemented.
 
 Implemented:
 
-- Added `docs/PHASE7_WORKFLOW.md`.
+- Added `docs/archive/phases/PHASE7_WORKFLOW.md`.
 - Replaced `/workflow` placeholder with a real Workflow Center.
 - Added read-only Planner dependency graph.
 - Added Step Explorer for Planner steps.
@@ -129,7 +129,7 @@ Status: implemented as enterprise readiness surface.
 
 Implemented:
 
-- Added `docs/PHASE8_ENTERPRISE.md`.
+- Added `docs/archive/phases/PHASE8_ENTERPRISE.md`.
 - Replaced `/settings` placeholder with a real enterprise readiness Settings page.
 - Added runtime connection inspection from frontend environment configuration.
 - Added SSE contract view for supported Agent Server events.

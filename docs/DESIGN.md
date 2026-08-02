@@ -172,4 +172,4 @@ Prefer:
 - `PRODUCT.md` for product positioning and screen blueprint
 - `UX.md` for interaction, navigation, and state behavior
 - `DESIGN_SYSTEM.md` for component and implementation standards
-- `V4_IDE_WORKSPACE.md` for the v4 IDE workspace standard
+- `docs/archive/design/V4_IDE_WORKSPACE.md` for the historical v4 IDE workspace standard

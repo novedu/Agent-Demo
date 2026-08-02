@@ -164,6 +164,7 @@ docs/
 ├── ARCHITECTURE.md
 ├── ROADMAP.md
 ├── DEMO_SCRIPT.md
+├── archive/
 ├── screenshots/
 └── media/
 ```

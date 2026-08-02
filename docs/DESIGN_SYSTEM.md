@@ -8,6 +8,12 @@ It is the source of truth for buttons, panels, badges, metrics, cards, drawers, 
 
 ## Core Token System
 
+The TypeScript files under `apps/agent-console/src/theme/` are the source
+tokens for the console palette, spacing, radius, shadow, and typography. The
+runtime UI currently consumes the equivalent CSS variables through Tailwind;
+keep the TypeScript tokens and CSS variables aligned when the visual system
+changes.
+
 ### Color Tokens
 
 ```text
@@ -141,4 +147,3 @@ Component styling must use these states consistently across Graph, Timeline, Ins
 If a UI element is used in more than one place, it must be implemented once and reused.
 
 Do not duplicate button, panel, badge, or JSON rendering logic across feature components.
-

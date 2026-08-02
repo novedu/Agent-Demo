@@ -8,8 +8,8 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
-    "@agent-demo/agent-runtime": "workspace:*",
-    "@agent-demo/shared-types": "workspace:*",
-    "@agent-demo/shared-utils": "workspace:*"
+    "@agent-demo/agent-runtime": "0.1.0",
+    "@agent-demo/shared-types": "0.1.0",
+    "@agent-demo/shared-utils": "0.1.0"
   }
 }
