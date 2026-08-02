@@ -61,7 +61,7 @@ User Task
 
 ## Phase 1: Agent Workspace Industry Demo
 
-Status: in progress
+Status: completed
 
 Goal:
 
@@ -112,7 +112,7 @@ Goal:
 
 Move `/agent` from a polished runtime console to a deeper Runtime Debugger.
 
-Status: in progress
+Status: completed
 
 Scope:
 

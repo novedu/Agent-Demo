@@ -4,7 +4,7 @@ All notable Agent Studio changes will be documented here.
 
 ## Agent Studio 2.0
 
-Status: in progress.
+Status: completed.
 
 Implemented:
 
@@ -19,20 +19,6 @@ Implemented:
 - Added true Stop and Regenerate chat controls.
 - Validated lint, test, build, POST task creation, SSE event flow, and task status query.
 
-Planned:
-
-- Establish product documentation system.
-- Establish Agent Studio 2.0 design specification.
-- Redefine default product entry as Agent Workspace.
-- Unify UI around Selected Runtime Object.
-- Upgrade Runtime Graph.
-- Upgrade Debug Timeline.
-- Upgrade Runtime Inspector.
-- Upgrade Chat Experience.
-- Add Evidence Navigation.
-- Normalize empty, loading, running, completed, and failed states.
-- Validate lint, test, and build.
-
 Planning update:
 
 - Added a portfolio-first roadmap that prioritizes `/agent` over broad enterprise platform work.
@@ -41,7 +27,7 @@ Planning update:
 
 ## Phase 2: Runtime Deepening
 
-Status: in progress.
+Status: completed.
 
 Implemented:
 
