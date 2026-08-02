@@ -24,7 +24,7 @@ export function Panel({
   return (
     <Card className={classNames('flex min-h-0 flex-col overflow-hidden', className)} {...props}>
       {(title || description || actions) && (
-        <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-3">
+        <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-4 lg:px-5">
           <div className="min-w-0">
             {title && <h2 className="truncate text-sm font-semibold leading-4 text-ink">{title}</h2>}
             {description && <p className="mt-0.5 truncate text-[10px] text-muted">{description}</p>}

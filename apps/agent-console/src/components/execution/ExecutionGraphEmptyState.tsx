@@ -21,7 +21,7 @@ export function ExecutionGraphEmptyState({ onStart, onStartRetryDemo }: Executio
       title="Runtime Graph"
       description="Compact dependency strip"
       className="h-full rounded-none border-0 shadow-none"
-      bodyClassName="flex min-h-0 flex-col gap-3 p-3"
+      bodyClassName="flex min-h-0 flex-col overflow-y-auto p-4 lg:p-5"
       actions={
         <button
           type="button"
@@ -35,7 +35,7 @@ export function ExecutionGraphEmptyState({ onStart, onStartRetryDemo }: Executio
         </button>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col justify-center gap-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-xs font-semibold text-ink">Agent idle, runtime path armed</div>
@@ -49,10 +49,10 @@ export function ExecutionGraphEmptyState({ onStart, onStartRetryDemo }: Executio
           </div>
         </div>
 
-        <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-line bg-white p-2">
+        <div className="flex min-h-[88px] items-center gap-2 overflow-x-auto rounded-lg border border-line bg-white p-3">
           {nodes.map((node, index) => (
-            <div key={node.label} className="flex items-center gap-1">
-              <div className={`flex h-11 min-w-[86px] flex-col justify-center rounded-md border px-2 ${node.color}`}>
+            <div key={node.label} className="flex items-center gap-2">
+              <div className={`flex h-14 min-w-[92px] flex-col justify-center rounded-md border px-3 ${node.color}`}>
                 <span className="truncate text-[10px] font-semibold">{node.label}</span>
                 <span className="font-mono text-[9px] opacity-70">{node.detail}</span>
               </div>
@@ -72,14 +72,14 @@ export function ExecutionGraphEmptyState({ onStart, onStartRetryDemo }: Executio
         </div>
 
         <div className="grid gap-2 text-[10px] leading-4 text-muted md:grid-cols-3">
-          <div className="rounded-md border border-line bg-panel px-2 py-1.5">
-            Chat streams the answer and runtime evidence.
+          <div className="rounded-md border border-line bg-panel px-3 py-2">
+            <span className="line-clamp-2">Chat streams the answer and runtime evidence.</span>
           </div>
-          <div className="rounded-md border border-line bg-panel px-2 py-1.5">
-            Timeline appends spans as runtime events arrive.
+          <div className="rounded-md border border-line bg-panel px-3 py-2">
+            <span className="line-clamp-2">Timeline appends spans as runtime events arrive.</span>
           </div>
-          <div className="rounded-md border border-line bg-panel px-2 py-1.5">
-            Drawer, Inspector, Graph and Chat share selection.
+          <div className="rounded-md border border-line bg-panel px-3 py-2">
+            <span className="line-clamp-2">Drawer, Inspector, Graph and Chat share selection.</span>
           </div>
         </div>
 
@@ -87,7 +87,7 @@ export function ExecutionGraphEmptyState({ onStart, onStartRetryDemo }: Executio
           <button
             type="button"
             onClick={onStartRetryDemo}
-            className="inline-flex h-8 w-fit cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 text-[10px] font-semibold text-amber-700 transition-colors duration-200 hover:bg-amber-100"
+            className="inline-flex h-7 w-fit cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 text-[10px] font-semibold text-amber-700 transition-colors duration-200 hover:bg-amber-100"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {'Run Tool Error -> Retry -> Success'}

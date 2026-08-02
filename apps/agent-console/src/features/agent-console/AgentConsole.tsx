@@ -1,3 +1,4 @@
+import { ChevronDownIcon, PlayIcon } from '../../components/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChatPanel } from '../../components/chat/ChatPanel';
 import {
@@ -16,7 +17,7 @@ import type { AgentEvent, CitationRecord, MemoryRecord } from '../../types/agent
 import { RuntimeInspector } from '../../components/inspector';
 import { useAgentStream } from '../../hooks/useAgentStream';
 import { useAgentStore } from '../../store/agentStore';
-import { buildRuntimeOverview } from './runtime-overview';
+import { buildRuntimeOverview, type RuntimeOverview } from './runtime-overview';
 import {
   buildRuntimeDependencyEdges,
   buildRuntimeObjects,
@@ -80,6 +81,8 @@ export function AgentConsole() {
   const [highlightedCitationId, setHighlightedCitationId] = useState<string>();
   const [highlightedMemoryId, setHighlightedMemoryId] = useState<string>();
   const [highlightedTraceId, setHighlightedTraceId] = useState<string>();
+  const [runtimeDockExpanded, setRuntimeDockExpanded] = useState(false);
+  const [runtimeDockManuallyToggled, setRuntimeDockManuallyToggled] = useState(false);
   const focusedObjectType = focusedRuntimeObject?.type;
   const focusedObjectId = focusedRuntimeObject?.id;
   const activeNodeId = focusedNodeId ?? currentNodeId;
@@ -160,6 +163,17 @@ export function AgentConsole() {
     [],
   );
 
+  useEffect(() => {
+    if (status === 'running' && hasTaskActivity && !runtimeDockManuallyToggled) {
+      setRuntimeDockExpanded(true);
+    }
+  }, [hasTaskActivity, runtimeDockManuallyToggled, status]);
+
+  function handleRuntimeDockToggle() {
+    setRuntimeDockManuallyToggled(true);
+    setRuntimeDockExpanded((value) => !value);
+  }
+
   function selectRuntimeNode(node: ExecutionNodeRecord, options: { openDrawer?: boolean; section?: string } = {}) {
     setAutoFollowRuntime(false);
     setFocusedNodeId(node.id);
@@ -237,8 +251,12 @@ export function AgentConsole() {
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-white text-ink">
       <section className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <div
-          className="grid min-h-0 min-w-0 overflow-hidden"
-          style={{ gridTemplateRows: 'minmax(0, 1fr) clamp(240px, 34vh, 320px)' }}
+          className="grid min-h-0 min-w-0 overflow-hidden transition-[grid-template-rows] duration-200 ease-out"
+          style={{
+            gridTemplateRows: runtimeDockExpanded
+              ? 'minmax(280px, 1fr) clamp(340px, 44vh, 420px)'
+              : 'minmax(280px, 1fr) 72px',
+          }}
         >
           <div className="min-h-0 min-w-0 overflow-hidden bg-white">
             <ChatPanel
@@ -262,30 +280,52 @@ export function AgentConsole() {
             />
           </div>
 
-          <div className="grid min-h-0 min-w-0 overflow-hidden border-t border-line bg-white lg:grid-cols-[minmax(0,0.48fr)_minmax(0,0.52fr)] 2xl:grid-cols-[minmax(0,0.52fr)_minmax(0,0.48fr)]">
-            <div className="min-h-0 min-w-0 overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
-              {hasTaskActivity ? (
-                <ExecutionExplorer
-                  nodes={displayNodes}
-                  runtimeObjects={runtimeObjects}
-                  dependencyEdges={dependencyEdges}
-                  activeNodeId={activeNodeId}
-                  onSelectNode={handleGraphSelect}
-                />
-              ) : (
-                <ExecutionGraphEmptyState onStart={() => runServerTask(defaultTask)} onStartRetryDemo={runRetryDemo} />
-              )}
-            </div>
+          <div className="min-h-0 min-w-0 overflow-hidden border-t border-line bg-white">
+            {runtimeDockExpanded ? (
+              <div className="grid h-full min-h-0 min-w-0 overflow-hidden lg:grid-cols-[minmax(0,0.48fr)_minmax(0,0.52fr)] 2xl:grid-cols-[minmax(0,0.52fr)_minmax(0,0.48fr)]">
+                <div className="min-h-0 min-w-0 overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
+                  {hasTaskActivity ? (
+                    <ExecutionExplorer
+                      nodes={displayNodes}
+                      runtimeObjects={runtimeObjects}
+                      dependencyEdges={dependencyEdges}
+                      activeNodeId={activeNodeId}
+                      onSelectNode={handleGraphSelect}
+                    />
+                  ) : (
+                    <ExecutionGraphEmptyState onStart={() => runServerTask(defaultTask)} onStartRetryDemo={runRetryDemo} />
+                  )}
+                </div>
 
-            <div className="min-h-0 min-w-0 overflow-hidden">
-              <ExecutionTimeline
+                <div className="min-h-0 min-w-0 overflow-hidden">
+                  <ExecutionTimeline
+                    nodes={displayNodes}
+                    runtimeObjects={runtimeObjects}
+                    activeNodeId={activeNodeId}
+                    onSelectNode={handleTimelineSelect}
+                    onStart={() => runServerTask(defaultTask)}
+                    dockAction={
+                      <button
+                        type="button"
+                        onClick={handleRuntimeDockToggle}
+                        className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md border border-line bg-white px-2 text-[10px] font-semibold text-muted transition-colors duration-200 hover:bg-panel hover:text-ink"
+                      >
+                        <ChevronDownIcon className="h-3 w-3" />
+                        Collapse
+                      </button>
+                    }
+                  />
+                </div>
+              </div>
+            ) : (
+              <RuntimeDockCollapsed
+                overview={runtimeOverview}
                 nodes={displayNodes}
-                runtimeObjects={runtimeObjects}
                 activeNodeId={activeNodeId}
-                onSelectNode={handleTimelineSelect}
+                onExpand={handleRuntimeDockToggle}
                 onStart={() => runServerTask(defaultTask)}
               />
-            </div>
+            )}
           </div>
         </div>
 
@@ -326,6 +366,8 @@ export function AgentConsole() {
 
   function runServerTask(input: string) {
     clearRetryDemoTimers(retryDemoTimersRef.current);
+    setRuntimeDockManuallyToggled(false);
+    setRuntimeDockExpanded(true);
     setAutoFollowRuntime(true);
     void start(input);
   }
@@ -337,6 +379,8 @@ export function AgentConsole() {
 
   function runRetryDemo() {
     clearRetryDemoTimers(retryDemoTimersRef.current);
+    setRuntimeDockManuallyToggled(false);
+    setRuntimeDockExpanded(true);
     setAutoFollowRuntime(true);
     beginTask(retryDemoTask);
     buildRetryDemoEvents().forEach((event, index) => {
@@ -349,6 +393,100 @@ export function AgentConsole() {
       retryDemoTimersRef.current.push(timer);
     });
   }
+}
+
+function RuntimeDockCollapsed({
+  overview,
+  nodes,
+  activeNodeId,
+  onExpand,
+  onStart,
+}: {
+  overview: RuntimeOverview;
+  nodes: ExecutionNodeRecord[];
+  activeNodeId?: string;
+  onExpand: () => void;
+  onStart: () => void;
+}) {
+  const activeKind = nodes.find((node) => node.id === activeNodeId)?.kind;
+  const path = [
+    { label: 'Planner', kind: 'planner' },
+    { label: 'Tool', kind: 'tool' },
+    { label: 'RAG', kind: 'rag' },
+    { label: 'Memory', kind: 'memory' },
+    { label: 'Answer', kind: 'answer' },
+  ];
+  const statusLabel =
+    overview.status === 'running'
+      ? 'Running'
+      : overview.status === 'success'
+        ? 'Completed'
+        : overview.status === 'error'
+          ? 'Failed'
+          : 'Ready';
+
+  return (
+    <div className="grid h-full min-h-0 min-w-0 grid-cols-[minmax(176px,0.8fr)_minmax(0,1fr)_minmax(220px,0.95fr)] bg-white">
+      <div className="flex min-w-0 items-center justify-between gap-3 border-r border-line px-4">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-ink">Runtime Graph</div>
+          <div className="mt-0.5 truncate text-[10px] text-muted">Compact dependency strip</div>
+        </div>
+        <button
+          type="button"
+          onClick={onStart}
+          className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-accent bg-accent px-2.5 text-[10px] font-semibold text-white transition-colors duration-200 hover:bg-blue-700"
+        >
+          <PlayIcon className="h-3 w-3" />
+          Run
+        </button>
+      </div>
+
+      <div className="flex min-w-0 items-center gap-1 overflow-x-auto px-4">
+        {path.map((item, index) => {
+          const active = item.kind === activeKind;
+          return (
+            <div key={item.label} className="flex shrink-0 items-center gap-1">
+              <span
+                className={`rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors duration-200 ${
+                  active
+                    ? 'border-blue-200 bg-blue-50 text-blue-700'
+                    : 'border-line bg-panel text-muted'
+                }`}
+              >
+                {item.label}
+              </span>
+              {index < path.length - 1 && <span className="text-[10px] text-lineStrong">→</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex min-w-0 items-center justify-between gap-3 pl-4 pr-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-ink">Debug Timeline</div>
+          <div className="mt-0.5 flex items-center gap-2 truncate text-[10px] text-muted">
+            <span>Flow trace</span>
+            <span className="text-lineStrong">·</span>
+            <span className="font-mono">
+              {overview.eventCount} event{overview.eventCount === 1 ? '' : 's'}
+            </span>
+            <span className="text-lineStrong">·</span>
+            <span>{statusLabel}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onExpand}
+          aria-label="Expand runtime graph and timeline"
+          className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-line bg-white px-2.5 text-[10px] font-semibold text-muted transition-colors duration-200 hover:bg-panel hover:text-ink"
+        >
+          <ChevronDownIcon className="h-3 w-3" />
+          Expand
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function clearRetryDemoTimers(timers: number[]) {

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Badge, JsonViewer, Panel } from '../ui';
 import { classNames } from '../ui/classNames';
 import { ExecutionStatus } from './ExecutionStatus';
@@ -20,6 +20,7 @@ interface ExecutionTimelineProps {
   activeNodeId?: string;
   onSelectNode: (node: ExecutionNodeRecord) => void;
   onStart?: () => void;
+  dockAction?: ReactNode;
 }
 
 const flowKinds = new Set([
@@ -39,6 +40,7 @@ export function ExecutionTimeline({
   activeNodeId,
   onSelectNode,
   onStart,
+  dockAction,
 }: ExecutionTimelineProps) {
   const flowObjects = useMemo(
     () => (runtimeObjects ?? buildRuntimeObjects(nodes)).filter((object) => flowKinds.has(object.sourceNode.kind)),
@@ -72,11 +74,12 @@ export function ExecutionTimeline({
           totalCount={flowObjects.length}
           onFilterChange={setFilter}
           onQueryChange={setQuery}
+          dockAction={dockAction}
         />
       }
     >
       {flowObjects.length ? (
-        <div className="h-full min-h-0 overflow-y-auto px-3 py-2">
+        <div className="h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto px-3 py-2">
           {visibleObjects.length === 0 ? (
             <div className="flex h-full min-h-0 items-center justify-center text-center">
               <div>
@@ -88,7 +91,7 @@ export function ExecutionTimeline({
             <>
               <TraceSummary summary={traceSummary} />
               <div className="relative mt-2">
-                <div className="absolute bottom-4 left-[82px] top-4 w-px bg-line" />
+                <div className="absolute bottom-4 left-[111px] top-4 w-px bg-line" />
                 {spanTree.map(({ object, depth }, index) => (
                   <TimelineSpan
                     key={object.id}
@@ -157,6 +160,7 @@ function TimelineToolbar({
   totalCount,
   onFilterChange,
   onQueryChange,
+  dockAction,
 }: {
   filter: TimelineFilter;
   query: string;
@@ -164,6 +168,7 @@ function TimelineToolbar({
   totalCount: number;
   onFilterChange: (value: TimelineFilter) => void;
   onQueryChange: (value: string) => void;
+  dockAction?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-1">
@@ -190,6 +195,7 @@ function TimelineToolbar({
         placeholder="Search"
         className="h-6 w-20 rounded-md border border-line bg-white px-2 text-[10px] text-ink outline-none transition-colors duration-200 placeholder:text-muted hover:bg-panel focus:border-accent xl:w-28"
       />
+      {dockAction}
     </div>
   );
 }
@@ -217,23 +223,23 @@ function TimelineSpan({
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.16, delay: index * 0.015 }}
-      className="relative"
+      className="relative min-w-0"
     >
       <button
         type="button"
         onClick={onSelect}
         className={classNames(
-          'grid w-full cursor-pointer grid-cols-[68px_22px_minmax(0,1fr)] items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors duration-200',
-          active ? 'bg-blue-50/70' : 'hover:bg-panel',
+          'grid w-full min-w-0 cursor-pointer grid-cols-[84px_22px_minmax(0,1fr)] items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors duration-200',
+          active ? 'bg-blue-50/80 ring-1 ring-inset ring-blue-100' : 'hover:bg-panel',
         )}
       >
-        <div className="pt-0.5 font-mono text-[10px] text-muted">
+        <div className="whitespace-nowrap pt-0.5 font-mono text-[10px] text-muted">
           {formatTime(node.startTime)}
         </div>
-          <div className="relative flex h-full justify-center pt-1.5">
+        <div className="relative flex h-full justify-center pt-1.5">
           {depth > 0 && (
             <span
-              className="absolute right-1/2 top-2 h-px bg-lineStrong"
+              className="pointer-events-none absolute left-1/2 top-2 h-px bg-lineStrong"
               style={{ width: `${depth * 12 + 8}px` }}
             />
           )}
@@ -242,14 +248,16 @@ function TimelineSpan({
             style={{ backgroundColor: color }}
           />
         </div>
-        <div className="min-w-0" style={{ paddingLeft: `${depth * 12}px` }}>
-          <div className="flex items-center gap-2">
-            {depth > 0 && <span className="font-mono text-[10px] text-muted">+</span>}
-            <Badge tone={getTone(node.kind)} className="px-1.5 py-0.5 text-[9px]">
+        <div className="min-w-0 overflow-hidden" style={{ paddingLeft: `${depth * 12}px` }}>
+          <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+            {depth > 0 && <span className="shrink-0 font-mono text-[10px] text-muted">+</span>}
+            <Badge tone={getTone(node.kind)} className="shrink-0 px-1.5 py-0.5 text-[9px]">
               {getKindLabel(node.kind)}
             </Badge>
-            <span className="truncate text-xs font-semibold text-ink">{object.title}</span>
-            <ExecutionStatus status={object.status} />
+            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">{object.title}</span>
+            <span className="shrink-0">
+              <ExecutionStatus status={object.status} />
+            </span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted">
             <span>{formatDuration(object.duration)}</span>
@@ -284,9 +292,9 @@ function TimelineSpan({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="overflow-hidden pl-[100px] pr-2"
+            className="max-w-full overflow-hidden pl-[130px] pr-2"
           >
-            <div className="mb-2 grid gap-2 rounded-lg border border-line bg-white p-2 lg:grid-cols-2">
+            <div className="mb-2 grid gap-2 rounded-lg border border-blue-100 bg-panel/50 p-2 lg:grid-cols-2">
               <JsonViewer title="Span" value={object.span} collapsed />
               <JsonViewer
                 title="Dependencies"
@@ -397,20 +405,28 @@ function EmptyFlow({ onStart }: { onStart?: () => void }) {
         )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {preview.map((item, index) => (
-          <div
-            key={item.label}
-            className="grid grid-cols-[58px_18px_minmax(0,1fr)] items-center gap-2 px-2 py-1.5"
-          >
-            <span className="font-mono text-[10px] text-muted">--:--</span>
-            <span className="h-2 w-2 rounded-full bg-slate-300" />
-            <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-panel px-2 py-1.5">
-              <span className="text-xs font-semibold text-ink">{item.label}</span>
-              <span className="font-mono text-[10px] text-muted">{item.status}</span>
+        <div className="relative">
+          <div className="absolute bottom-5 left-[79px] top-5 w-px bg-line" />
+          {preview.map((item, index) => (
+            <div
+              key={item.label}
+              className="grid grid-cols-[58px_18px_minmax(0,1fr)] items-center gap-2 px-2 py-1.5"
+            >
+              <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-muted">
+                {index === 0 ? 'Ready' : 'Queued'}
+              </span>
+              <span
+                className={`relative z-10 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                  index === 0 ? 'bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]' : 'bg-slate-300'
+                }`}
+              />
+              <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-panel px-2 py-1.5">
+                <span className="text-xs font-semibold text-ink">{item.label}</span>
+                <span className="font-mono text-[10px] text-muted">{item.status}</span>
+              </div>
             </div>
-            {index < preview.length - 1 && <div className="col-start-2 h-3 w-px bg-line" />}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

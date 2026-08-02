@@ -94,7 +94,7 @@ export function Dashboard() {
 
   return (
     <section className="h-full overflow-y-auto bg-[var(--studio-bg)]">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-4 p-4 lg:p-6">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-5 p-6 lg:p-8">
         <RuntimeOverviewHeader
           status={status}
           error={error}
@@ -129,7 +129,7 @@ export function Dashboard() {
             <CurrentRuntimeSpotlight overview={runtimeOverview} />
             <RuntimeMetricStrip summary={summary} />
 
-            <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)]">
+            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)]">
               <RecentTasksPanel tasks={tasks} />
               <FailureReviewPanel
                 tasks={failures}
@@ -266,9 +266,9 @@ function RuntimeMetricStrip({
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => (
-        <Card key={metric.label} className="p-4">
+        <Card key={metric.label} className="min-h-[126px] p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
               {metric.label}
@@ -437,21 +437,27 @@ function RuntimeSignalsPanel({
     <Panel
       title="Runtime Signals"
       description="Current session only · not historical aggregation"
-      actions={<Badge tone="neutral">live projection</Badge>}
+      actions={
+        <span className="hidden shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] text-muted sm:inline">
+          live projection
+        </span>
+      }
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {signals.map((signal) => (
-          <div key={signal.label} className="rounded-lg border border-line bg-panel px-3 py-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
-                {signal.label}
-              </span>
-              <span className={`h-1.5 w-1.5 rounded-full ${signal.tone === 'warning' ? 'bg-amber-500' : signal.tone === 'success' ? 'bg-emerald-500' : signal.tone === 'info' ? 'bg-blue-500' : 'bg-slate-300'}`} />
+      <div className="p-6 lg:p-7">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+          {signals.map((signal) => (
+            <div key={signal.label} className="min-h-[144px] rounded-lg border border-line bg-panel p-5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
+                  {signal.label}
+                </span>
+                <span className={`h-1.5 w-1.5 rounded-full ${signal.tone === 'warning' ? 'bg-amber-500' : signal.tone === 'success' ? 'bg-emerald-500' : signal.tone === 'info' ? 'bg-blue-500' : 'bg-slate-300'}`} />
+              </div>
+              <div className="mt-3 font-mono text-xl font-semibold text-ink">{signal.value}</div>
+              <div className="mt-1.5 text-[10px] text-muted">{signal.detail}</div>
             </div>
-            <div className="mt-2 font-mono text-lg font-semibold text-ink">{signal.value}</div>
-            <div className="mt-1 text-[10px] text-muted">{signal.detail}</div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </Panel>
   );
