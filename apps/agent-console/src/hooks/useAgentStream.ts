@@ -6,26 +6,66 @@ import {
   type AgentEventSubscription,
 } from '../services/agent';
 import { useAgentStore } from '../store/agentStore';
+import type { AgentEvent } from '../types/agent';
+
+const demoPacingEnabled = import.meta.env.VITE_AGENT_DEMO_PACING !== 'false';
 
 export function useAgentStream() {
   const subscriptionRef = useRef<AgentEventSubscription | null>(null);
   const taskIdRef = useRef<string | null>(null);
+  const eventQueueRef = useRef<AgentEvent[]>([]);
+  const timerRef = useRef<number | null>(null);
   const beginTask = useAgentStore((state) => state.beginTask);
   const updateFromEvent = useAgentStore((state) => state.updateFromEvent);
   const setStatus = useAgentStore((state) => state.setStatus);
+
+  const clearQueuedEvents = useCallback(() => {
+    eventQueueRef.current = [];
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const flushNextEvent = useCallback(() => {
+    const event = eventQueueRef.current.shift();
+    if (!event) {
+      timerRef.current = null;
+      return;
+    }
+
+    updateFromEvent(event);
+    timerRef.current = window.setTimeout(flushNextEvent, getPlaybackDelay(event));
+  }, [updateFromEvent]);
+
+  const dispatchEvent = useCallback(
+    (event: AgentEvent) => {
+      if (!demoPacingEnabled) {
+        updateFromEvent(event);
+        return;
+      }
+
+      eventQueueRef.current.push(event);
+      if (timerRef.current === null) {
+        flushNextEvent();
+      }
+    },
+    [flushNextEvent, updateFromEvent],
+  );
 
   const start = useCallback(
     async (input: string) => {
       subscriptionRef.current?.close();
       subscriptionRef.current = null;
       taskIdRef.current = null;
+      clearQueuedEvents();
       beginTask(input);
 
       try {
         const task = await createAgentTask(input);
         taskIdRef.current = task.taskId;
         subscriptionRef.current = subscribeAgentEvents(task.taskId, {
-          onEvent: updateFromEvent,
+          onEvent: dispatchEvent,
           onError: () => {
             setStatus('error');
             writeActiveAssistantMessage('Runtime server connection lost. Check the Agent Server and rerun the demo task.');
@@ -40,7 +80,7 @@ export function useAgentStream() {
         writeActiveAssistantMessage('Unable to start the Agent Server task. Start the runtime server, then run the demo again.');
       }
     },
-    [beginTask, setStatus, updateFromEvent],
+    [beginTask, clearQueuedEvents, dispatchEvent, setStatus],
   );
 
   const stop = useCallback(() => {
@@ -48,21 +88,36 @@ export function useAgentStream() {
     subscriptionRef.current?.close();
     subscriptionRef.current = null;
     taskIdRef.current = null;
+    clearQueuedEvents();
     if (taskId) {
       void cancelAgentTask(taskId).catch(() => undefined);
     }
     writeActiveAssistantMessage('Task cancelled by user.');
     setStatus('idle');
-  }, [setStatus]);
+  }, [clearQueuedEvents, setStatus]);
 
   useEffect(
     () => () => {
       subscriptionRef.current?.close();
+      clearQueuedEvents();
     },
-    [],
+    [clearQueuedEvents],
   );
 
   return { start, stop };
+}
+
+function getPlaybackDelay(event: AgentEvent): number {
+  if (event.type === 'final_answer') return 16;
+  if (event.type === 'state_update') return 36;
+  if (event.type === 'tool_start') return 180;
+  if (event.type === 'tool_success') return 120;
+  if (event.type === 'plan_start' || event.type === 'plan_update') return 180;
+  if (event.type === 'rag_retrieve') return 160;
+  if (event.type === 'memory_update') return 140;
+  if (event.type === 'reflection') return 160;
+  if (event.type === 'evaluation_start' || event.type === 'evaluation_complete') return 160;
+  return 80;
 }
 
 function writeActiveAssistantMessage(content: string): void {

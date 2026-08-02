@@ -8,7 +8,11 @@ import {
   getStatusColor,
   type ExecutionNodeRecord,
 } from './execution-model';
-import type { RuntimeObject } from '../../features/agent-console/runtime-object-model';
+import {
+  buildRuntimeObjects,
+  getRuntimeDepth,
+  type RuntimeObject,
+} from '../../features/agent-console/runtime-object-model';
 
 interface ExecutionTimelineProps {
   nodes: ExecutionNodeRecord[];
@@ -37,7 +41,7 @@ export function ExecutionTimeline({
   onStart,
 }: ExecutionTimelineProps) {
   const flowObjects = useMemo(
-    () => (runtimeObjects ?? nodes.map(toRuntimeObjectFallback)).filter((object) => flowKinds.has(object.sourceNode.kind)),
+    () => (runtimeObjects ?? buildRuntimeObjects(nodes)).filter((object) => flowKinds.has(object.sourceNode.kind)),
     [nodes, runtimeObjects],
   );
   const [filter, setFilter] = useState<TimelineFilter>('all');
@@ -48,6 +52,7 @@ export function ExecutionTimeline({
     [filter, flowObjects, query],
   );
   const spanTree = useMemo(() => visibleObjects.map(toTimelineSpanModel), [visibleObjects]);
+  const traceSummary = useMemo(() => buildTraceSummary(flowObjects), [flowObjects]);
 
   useEffect(() => {
     if (activeNodeId) setExpandedId(activeNodeId);
@@ -80,29 +85,58 @@ export function ExecutionTimeline({
               </div>
             </div>
           ) : (
-          <div className="relative">
-            <div className="absolute bottom-4 left-[82px] top-4 w-px bg-line" />
-            {spanTree.map(({ object, depth }, index) => (
-              <TimelineSpan
-                key={object.id}
-                object={object}
-                depth={depth}
-                index={index}
-                active={object.id === activeNodeId}
-                expanded={object.id === expandedId}
-                onSelect={() => {
-                  onSelectNode(object.sourceNode);
-                  setExpandedId((value) => (value === object.id ? undefined : object.id));
-                }}
-              />
-            ))}
-          </div>
+            <>
+              <TraceSummary summary={traceSummary} />
+              <div className="relative mt-2">
+                <div className="absolute bottom-4 left-[82px] top-4 w-px bg-line" />
+                {spanTree.map(({ object, depth }, index) => (
+                  <TimelineSpan
+                    key={object.id}
+                    object={object}
+                    depth={depth}
+                    index={index}
+                    active={object.id === activeNodeId}
+                    expanded={object.id === expandedId}
+                    onSelect={() => {
+                      onSelectNode(object.sourceNode);
+                      setExpandedId((value) => (value === object.id ? undefined : object.id));
+                    }}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       ) : (
         <EmptyFlow onStart={onStart} />
       )}
     </Panel>
+  );
+}
+
+interface TraceSummaryModel {
+  traceId: string;
+  rootSpan?: string;
+  spanCount: number;
+  eventCount: number;
+  duration?: number;
+  criticalPath: string;
+}
+
+function TraceSummary({ summary }: { summary: TraceSummaryModel }) {
+  return (
+    <div className="rounded-lg border border-line bg-slate-50/70 px-2.5 py-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-muted">
+        <span>trace {shortId(summary.traceId)}</span>
+        <span>root {summary.rootSpan ?? '-'}</span>
+        <span>spans {summary.spanCount}</span>
+        <span>events {summary.eventCount}</span>
+        <span>duration {formatDuration(summary.duration)}</span>
+      </div>
+      <div className="mt-1 truncate text-[10px] text-muted">
+        critical path · {summary.criticalPath}
+      </div>
+    </div>
   );
 }
 
@@ -196,7 +230,13 @@ function TimelineSpan({
         <div className="pt-0.5 font-mono text-[10px] text-muted">
           {formatTime(node.startTime)}
         </div>
-        <div className="relative flex h-full justify-center pt-1.5">
+          <div className="relative flex h-full justify-center pt-1.5">
+          {depth > 0 && (
+            <span
+              className="absolute right-1/2 top-2 h-px bg-lineStrong"
+              style={{ width: `${depth * 12 + 8}px` }}
+            />
+          )}
           <span
             className="relative z-10 h-2.5 w-2.5 rounded-full border-2 border-white shadow-sm"
             style={{ backgroundColor: color }}
@@ -213,8 +253,25 @@ function TimelineSpan({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted">
             <span>{formatDuration(object.duration)}</span>
+            <span>span {shortId(object.spanId)}</span>
+            <span>events {object.span.eventCount}</span>
             <span>tokens {object.tokenCount ?? 0}</span>
             <span>retry {object.retryCount ?? 0}</span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {object.parentId && (
+              <span className="rounded border border-line bg-white px-1.5 py-0.5 font-mono text-[9px] text-muted">
+                parent {object.parentId}
+              </span>
+            )}
+            {object.dependencyIds.slice(0, 3).map((dependencyId) => (
+              <span
+                key={dependencyId}
+                className="rounded border border-line bg-white px-1.5 py-0.5 font-mono text-[9px] text-muted"
+              >
+                dep {dependencyId}
+              </span>
+            ))}
           </div>
           <p className="mt-1 line-clamp-1 text-[10px] leading-4 text-muted">{object.summary}</p>
         </div>
@@ -230,6 +287,19 @@ function TimelineSpan({
             className="overflow-hidden pl-[100px] pr-2"
           >
             <div className="mb-2 grid gap-2 rounded-lg border border-line bg-white p-2 lg:grid-cols-2">
+              <JsonViewer title="Span" value={object.span} collapsed />
+              <JsonViewer
+                title="Dependencies"
+                value={{
+                  traceId: object.traceId,
+                  spanId: object.spanId,
+                  parentId: object.parentId,
+                  dependencyIds: object.dependencyIds,
+                  childIds: object.childIds,
+                  lifecycle: object.lifecycle,
+                }}
+                collapsed
+              />
               <JsonViewer title="Input" value={object.input ?? object.arguments} collapsed />
               <JsonViewer title="Output" value={object.output} collapsed />
               <JsonViewer title="Metadata" value={object.metadata} collapsed />
@@ -240,25 +310,6 @@ function TimelineSpan({
       </AnimatePresence>
     </motion.article>
   );
-}
-
-function toRuntimeObjectFallback(node: ExecutionNodeRecord): RuntimeObject {
-  return {
-    id: node.id,
-    type: node.kind === 'rag' ? 'knowledge' : node.kind === 'llm' ? 'answer' : node.kind,
-    title: node.component,
-    status: node.status,
-    summary: node.summary,
-    input: node.input,
-    output: node.output,
-    arguments: node.arguments,
-    metadata: node.metadata,
-    trace: node.trace,
-    duration: node.duration,
-    startTime: node.startTime,
-    endTime: node.endTime,
-    sourceNode: node,
-  };
 }
 
 function matchesFilter(object: RuntimeObject, filter: TimelineFilter): boolean {
@@ -277,7 +328,32 @@ function matchesQuery(object: RuntimeObject, query: string): boolean {
     object.type,
     object.status,
     object.sourceNode.kind,
+    object.traceId,
+    object.spanId,
+    object.parentId ?? '',
+    ...object.dependencyIds,
   ].some((value) => value.toLowerCase().includes(normalizedQuery));
+}
+
+function buildTraceSummary(objects: RuntimeObject[]): TraceSummaryModel {
+  const timestamps = objects
+    .flatMap((object) => [object.startTime, object.endTime])
+    .filter((value): value is number => typeof value === 'number');
+  const root = objects.find((object) => !object.parentId) ?? objects[0];
+  const criticalPath = objects
+    .filter((object) => object.lifecycle !== 'pending')
+    .map((object) => object.title)
+    .join(' -> ');
+
+  return {
+    traceId: root?.traceId ?? 'trace_local',
+    rootSpan: root?.id,
+    spanCount: objects.length,
+    eventCount: objects.reduce((sum, object) => sum + object.span.eventCount, 0),
+    duration:
+      timestamps.length >= 2 ? Math.max(...timestamps) - Math.min(...timestamps) : undefined,
+    criticalPath: criticalPath || 'waiting for first runtime span',
+  };
 }
 
 function toTimelineSpanModel(object: RuntimeObject): { object: RuntimeObject; depth: number } {
@@ -285,12 +361,7 @@ function toTimelineSpanModel(object: RuntimeObject): { object: RuntimeObject; de
 }
 
 function getTimelineDepth(type: RuntimeObject['type']): number {
-  if (type === 'planner') return 0;
-  if (type === 'workflow' || type === 'knowledge') return 1;
-  if (type === 'tool') return 2;
-  if (type === 'memory' || type === 'reflection') return 3;
-  if (type === 'evaluation') return 4;
-  return 5;
+  return getRuntimeDepth(type);
 }
 
 function EmptyFlow({ onStart }: { onStart?: () => void }) {
@@ -364,4 +435,8 @@ function formatTime(timestamp?: number): string {
     minute: '2-digit',
     second: '2-digit',
   });
+}
+
+function shortId(value: string): string {
+  return value.length > 18 ? value.slice(-18) : value;
 }

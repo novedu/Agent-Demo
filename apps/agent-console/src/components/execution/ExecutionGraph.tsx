@@ -6,13 +6,13 @@ import { ExecutionNode } from './ExecutionNode';
 import {
   getStatusColor,
   type ExecutionNodeRecord,
-  type ExecutionNodeStatus,
 } from './execution-model';
 import type {
   RuntimeDependencyEdge,
   RuntimeObject,
   RuntimeObjectType,
 } from '../../features/agent-console/runtime-object-model';
+import { buildRuntimeObjects } from '../../features/agent-console/runtime-object-model';
 
 interface ExecutionGraphProps {
   nodes: ExecutionNodeRecord[];
@@ -47,7 +47,7 @@ export function ExecutionGraph({
   const dragStart = useRef<{ pointerX: number; pointerY: number; x: number; y: number }>();
 
   const objects = useMemo(
-    () => runtimeObjects ?? nodes.map(toRuntimeObjectFallback),
+    () => runtimeObjects ?? buildRuntimeObjects(nodes),
     [nodes, runtimeObjects],
   );
   const graph = useMemo(
@@ -280,23 +280,4 @@ function buildSequentialEdges(objects: RuntimeObject[]): RuntimeDependencyEdge[]
       label: 'next',
     };
   });
-}
-
-function toRuntimeObjectFallback(node: ExecutionNodeRecord): RuntimeObject {
-  return {
-    id: node.id,
-    type: node.kind === 'rag' ? 'knowledge' : node.kind === 'llm' ? 'answer' : node.kind,
-    title: node.component,
-    status: node.status as ExecutionNodeStatus,
-    summary: node.summary,
-    input: node.input,
-    output: node.output,
-    arguments: node.arguments,
-    metadata: node.metadata,
-    trace: node.trace,
-    duration: node.duration,
-    startTime: node.startTime,
-    endTime: node.endTime,
-    sourceNode: node,
-  };
 }

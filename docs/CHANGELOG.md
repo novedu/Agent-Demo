@@ -39,6 +39,131 @@ Planning update:
 - Deferred RBAC, SSO, audit, billing, deployment, and team workspace to Agent Studio 3.0.
 - Defined Phase 2 as Runtime Deepening instead of expanding placeholder pages first.
 
+## Phase 2: Runtime Deepening
+
+Status: in progress.
+
+Implemented:
+
+- Added frontend RuntimeObject schema fields for trace, span, parent, dependency, child, lifecycle, token, retry, and cost projection.
+- Added RuntimeSpan projection for Timeline and Drawer.
+- Added Debug Timeline trace summary and span relationship details.
+- Added Timeline search coverage for trace id, span id, parent id, and dependency ids.
+- Added dependency context sections to Runtime Inspector.
+- Added Planner and Workflow-specific Inspector templates.
+- Added Drawer trace and metadata tabs with dependency information.
+- Added UI-level SSE demo playback pacing with an environment opt-out.
+- Added `docs/architecture/runtime-object.md`.
+
+## Phase 3: Dashboard Productization
+
+Status: implemented.
+
+Implemented:
+
+- Added `docs/PHASE3_DASHBOARD.md`.
+- Rebuilt `/dashboard` as a runtime overview instead of a placeholder.
+- Added typed task history API adapter for `GET /api/agent/tasks`.
+- Added typed retry adapter for `POST /api/agent/tasks/:taskId/retry`.
+- Added Runtime Overview header with server connection state, environment, and model.
+- Added Current Runtime spotlight linked to Agent Workspace.
+- Added truthful task metrics from runtime task history.
+- Added Recent Tasks panel with status, progress, retry count, current step, and error display.
+- Added Failure Review panel with real retry action when retry is available.
+- Added Runtime Signals panel for current-session events, tools, knowledge, memory, and evaluation.
+- Avoided fabricated historical evaluation, token, cost, and latency metrics.
+
+## Phase 4: Knowledge Platform
+
+Status: implemented.
+
+Implemented:
+
+- Added `docs/PHASE4_KNOWLEDGE.md`.
+- Replaced `/knowledge` placeholder with a real Knowledge Center.
+- Added current-session RAG retrieval run view.
+- Added source summary panel.
+- Added searchable and filterable chunk explorer.
+- Added citation detail panel with source, score, chunk content, query, event id, duration, and matched keywords.
+- Derived Knowledge data from existing `citations` and `rag_retrieve` / `searchKnowledge` events without changing Store or backend contracts.
+- Added Agent Workspace navigation for evidence inspection.
+- Avoided fake upload, embedding, vector DB, and historical citation features.
+
+## Phase 5: Memory Platform
+
+Status: implemented.
+
+Implemented:
+
+- Added `docs/PHASE5_MEMORY.md`.
+- Replaced `/memory` placeholder with a real Memory Center.
+- Added current-session memory write timeline.
+- Added Working, Episodic, and Semantic memory grouping.
+- Added searchable and filterable Memory Explorer.
+- Added Memory Detail panel with memory type, content, importance, task id, event id, update time, and related message when detectable.
+- Derived Memory data from existing `memory`, `messages`, and `memory_update` events without changing Store or backend contracts.
+- Added Agent Workspace navigation for runtime inspection.
+- Avoided fake persistent memory database, memory editing, vector search, and cross-task history features.
+
+## Phase 6: Evaluation Platform
+
+Status: implemented.
+
+Implemented:
+
+- Added `docs/PHASE6_EVALUATION.md`.
+- Replaced `/evaluation` placeholder with a real Evaluation Center.
+- Added current-run quality scorecard.
+- Added criteria breakdown for completeness, accuracy, groundedness, and task completion.
+- Added feedback review panel with runtime context.
+- Added evaluator lifecycle trace from `evaluation_start` and `evaluation_complete` events.
+- Added regression readiness panel that clearly marks history-backed analytics as future work.
+- Derived Evaluation data from existing `evaluation`, `events`, `messages`, `tools`, `citations`, and `memory` without changing Store or backend contracts.
+- Avoided fake historical trends, leaderboards, datasets, and compare-runs.
+
+## Phase 7: Workflow Builder
+
+Status: implemented.
+
+Implemented:
+
+- Added `docs/PHASE7_WORKFLOW.md`.
+- Replaced `/workflow` placeholder with a real Workflow Center.
+- Added read-only Planner dependency graph.
+- Added Step Explorer for Planner steps.
+- Added step-to-runtime-object mapping.
+- Added Workflow Detail with Planner goal, selected step, step definition JSON, and runtime mapping JSON.
+- Added Workflow Events panel from current runtime events.
+- Derived Workflow data from existing `plan`, `workflow`, `events`, `tools`, `citations`, `evaluation`, and `messages` without changing Store or backend contracts.
+- Avoided fake drag-and-drop editing, workflow persistence, branch editing, loop editing, and deployment features.
+
+## Phase 8: Enterprise Platform
+
+Status: implemented as enterprise readiness surface.
+
+Implemented:
+
+- Added `docs/PHASE8_ENTERPRISE.md`.
+- Replaced `/settings` placeholder with a real enterprise readiness Settings page.
+- Added runtime connection inspection from frontend environment configuration.
+- Added SSE contract view for supported Agent Server events.
+- Added current session signal summary.
+- Added enterprise readiness matrix for available, partial, and planned capabilities.
+- Added security boundary section to prevent over-claiming RBAC, SSO, audit, deployment, or secret management.
+- Derived Settings data from existing frontend configuration and Zustand state without changing Store or backend contracts.
+- Avoided fake identity, role, audit, API key, deployment, billing, and monitoring features.
+
+## Portfolio Demo Polish
+
+Status: implemented.
+
+Implemented:
+
+- Added root `README.md` with product positioning, architecture, routes, demo flow, setup, verification, and capability boundaries.
+- Added `docs/DEMO_SCRIPT.md` for interview walkthroughs and demo recordings.
+- Added `docs/PORTFOLIO_REVIEW.md` for portfolio framing, strengths, likely reviewer questions, and honest maturity assessment.
+- Clarified that Agent Studio is a portfolio-grade Enterprise Agent Runtime Studio MVP, not a fully production-ready enterprise AI platform.
+
 ## Agent Studio 2.1
 
 Planned:

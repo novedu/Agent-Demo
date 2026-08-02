@@ -72,7 +72,15 @@ If code conflicts with the documentation, change the code. Do not casually chang
 
 ## Required Verification
 
-Before completing frontend changes:
+Before completing repo-level changes, prefer the root scripts:
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+For console-only work, these local scripts are also available:
 
 ```bash
 cd apps/agent-console
@@ -81,10 +89,10 @@ npm run test
 npm run build
 ```
 
-Before completing repo-level TypeScript changes:
+For TypeScript-only checks:
 
 ```bash
-npx tsc --noEmit
+npm run typecheck
 ```
 
 ## UI Review Checklist

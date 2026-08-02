@@ -1,4 +1,5 @@
 import type { ExecutionNodeRecord, ExecutionNodeStatus } from '../../components/execution/execution-model';
+import type { AgentEvent } from '../../types/agent';
 
 export type RuntimeObjectType =
   | 'planner'
@@ -10,11 +11,36 @@ export type RuntimeObjectType =
   | 'evaluation'
   | 'answer';
 
+export type RuntimeLifecycle = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface RuntimeSpan {
+  spanId: string;
+  traceId: string;
+  parentId?: string;
+  objectId: string;
+  component: string;
+  type: RuntimeObjectType;
+  status: ExecutionNodeStatus;
+  lifecycle: RuntimeLifecycle;
+  depth: number;
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+  eventCount: number;
+  events: AgentEvent[];
+}
+
 export interface RuntimeObject {
   id: string;
   type: RuntimeObjectType;
+  traceId: string;
+  spanId: string;
+  parentId?: string;
+  dependencyIds: string[];
+  childIds: string[];
   title: string;
   status: ExecutionNodeStatus;
+  lifecycle: RuntimeLifecycle;
   summary: string;
   input?: unknown;
   output?: unknown;
@@ -28,6 +54,7 @@ export interface RuntimeObject {
   tokenCount?: number;
   retryCount?: number;
   cost?: number;
+  span: RuntimeSpan;
   sourceNode: ExecutionNodeRecord;
 }
 
@@ -40,26 +67,61 @@ export interface RuntimeDependencyEdge {
 }
 
 export function buildRuntimeObjects(nodes: ExecutionNodeRecord[]): RuntimeObject[] {
-  return nodes.map((node) => ({
-    id: node.id,
-    type: toRuntimeObjectType(node.kind),
-    title: node.component,
-    status: node.status,
-    summary: node.summary,
-    input: node.input,
-    output: node.output,
-    arguments: node.arguments,
-    reasoning: getReasoningPayload(node),
-    metadata: node.metadata,
-    trace: node.trace,
-    duration: node.duration,
-    startTime: node.startTime,
-    endTime: node.endTime,
-    tokenCount: readNumber(node.metadata, 'tokenCount'),
-    retryCount: readNumber(node.metadata, 'retryCount'),
-    cost: readNumber(node.metadata, 'cost'),
-    sourceNode: node,
-  }));
+  const traceId = inferTraceId(nodes);
+  const baseObjects = nodes.map((node) => {
+    const type = toRuntimeObjectType(node.kind);
+    const events = getTraceEvents(node.trace);
+    const lifecycle = toLifecycle(node.status);
+    const spanId = `${traceId}:${node.id}`;
+
+    return {
+      id: node.id,
+      type,
+      traceId,
+      spanId,
+      dependencyIds: [],
+      childIds: [],
+      title: node.component,
+      status: node.status,
+      lifecycle,
+      summary: node.summary,
+      input: node.input,
+      output: node.output,
+      arguments: node.arguments,
+      reasoning: getReasoningPayload(node),
+      metadata: {
+        ...node.metadata,
+        traceId,
+        spanId,
+        lifecycle,
+      },
+      trace: node.trace,
+      duration: node.duration,
+      startTime: node.startTime,
+      endTime: node.endTime,
+      tokenCount: readNumber(node.metadata, 'tokenCount'),
+      retryCount: readNumber(node.metadata, 'retryCount'),
+      cost: readNumber(node.metadata, 'cost'),
+      span: {
+        spanId,
+        traceId,
+        objectId: node.id,
+        component: node.component,
+        type,
+        status: node.status,
+        lifecycle,
+        depth: getRuntimeDepth(type),
+        startTime: node.startTime,
+        endTime: node.endTime,
+        duration: node.duration,
+        eventCount: events.length,
+        events,
+      },
+      sourceNode: node,
+    } satisfies RuntimeObject;
+  });
+
+  return enrichRelationships(baseObjects);
 }
 
 export function buildRuntimeDependencyEdges(objects: RuntimeObject[]): RuntimeDependencyEdge[] {
@@ -122,6 +184,77 @@ function addEdge(
   });
 }
 
+function enrichRelationships(objects: RuntimeObject[]): RuntimeObject[] {
+  const parentById = new Map<string, string | undefined>();
+  objects.forEach((object) => parentById.set(object.id, getParentId(object, objects)));
+
+  const dependenciesById = new Map<string, string[]>();
+  objects.forEach((object) => dependenciesById.set(object.id, getDependencyIds(object, objects)));
+
+  return objects.map((object) => {
+    const parentId = parentById.get(object.id);
+    const dependencyIds = dependenciesById.get(object.id) ?? [];
+    const childIds = objects
+      .filter((candidate) => parentById.get(candidate.id) === object.id)
+      .map((candidate) => candidate.id);
+
+    return {
+      ...object,
+      parentId,
+      dependencyIds,
+      childIds,
+      metadata: {
+        ...object.metadata,
+        parentId,
+        dependencyIds,
+        childIds,
+      },
+      span: {
+        ...object.span,
+        parentId,
+      },
+    };
+  });
+}
+
+function getParentId(object: RuntimeObject, objects: RuntimeObject[]): string | undefined {
+  const planner = firstObject(objects, 'planner');
+  const workflow = firstObject(objects, 'workflow');
+  const knowledge = firstObject(objects, 'knowledge');
+  const memory = firstObject(objects, 'memory');
+  const reflection = firstObject(objects, 'reflection');
+  const evaluation = firstObject(objects, 'evaluation');
+  const latestTool = latestObject(objects, 'tool');
+
+  if (object.type === 'workflow') return planner?.id;
+  if (object.type === 'knowledge') return planner?.id;
+  if (object.type === 'tool') return workflow?.id ?? planner?.id;
+  if (object.type === 'memory') return latestTool?.id ?? workflow?.id;
+  if (object.type === 'reflection') return memory?.id ?? knowledge?.id ?? latestTool?.id;
+  if (object.type === 'evaluation') return reflection?.id;
+  if (object.type === 'answer') return evaluation?.id ?? reflection?.id ?? latestTool?.id;
+  return undefined;
+}
+
+function getDependencyIds(object: RuntimeObject, objects: RuntimeObject[]): string[] {
+  const planner = firstObject(objects, 'planner');
+  const workflow = firstObject(objects, 'workflow');
+  const knowledge = firstObject(objects, 'knowledge');
+  const memory = firstObject(objects, 'memory');
+  const reflection = firstObject(objects, 'reflection');
+  const evaluation = firstObject(objects, 'evaluation');
+  const tools = objects.filter((candidate) => candidate.type === 'tool');
+
+  if (object.type === 'workflow') return compact([planner?.id]);
+  if (object.type === 'knowledge') return compact([planner?.id]);
+  if (object.type === 'tool') return compact([workflow?.id ?? planner?.id]);
+  if (object.type === 'memory') return tools.map((tool) => tool.id);
+  if (object.type === 'reflection') return compact([knowledge?.id, memory?.id, ...tools.map((tool) => tool.id)]);
+  if (object.type === 'evaluation') return compact([reflection?.id]);
+  if (object.type === 'answer') return compact([evaluation?.id, reflection?.id, knowledge?.id]);
+  return [];
+}
+
 function getEdgeStatus(from: ExecutionNodeStatus, to: ExecutionNodeStatus): ExecutionNodeStatus {
   if (from === 'failed' || to === 'failed') return 'failed';
   if (from === 'running' || to === 'running') return 'running';
@@ -143,6 +276,23 @@ function toRuntimeObjectType(kind: ExecutionNodeRecord['kind']): RuntimeObjectTy
   return kind;
 }
 
+function toLifecycle(status: ExecutionNodeStatus): RuntimeLifecycle {
+  if (status === 'running') return 'running';
+  if (status === 'success' || status === 'skipped') return 'completed';
+  if (status === 'failed') return 'failed';
+  if (status === 'cancelled') return 'cancelled';
+  return 'pending';
+}
+
+export function getRuntimeDepth(type: RuntimeObjectType): number {
+  if (type === 'planner') return 0;
+  if (type === 'workflow' || type === 'knowledge') return 1;
+  if (type === 'tool') return 2;
+  if (type === 'memory' || type === 'reflection') return 3;
+  if (type === 'evaluation') return 4;
+  return 5;
+}
+
 function getReasoningPayload(node: ExecutionNodeRecord): unknown {
   if (node.metadata && 'reasoning' in node.metadata) return node.metadata.reasoning;
   if (node.kind === 'reflection') return node.output;
@@ -153,4 +303,39 @@ function getReasoningPayload(node: ExecutionNodeRecord): unknown {
 function readNumber(metadata: Record<string, unknown> | undefined, key: string): number | undefined {
   const value = metadata?.[key];
   return typeof value === 'number' ? value : undefined;
+}
+
+function inferTraceId(nodes: ExecutionNodeRecord[]): string {
+  for (const node of nodes) {
+    const event = getTraceEvents(node.trace).find((item) => item.taskId);
+    if (event?.taskId) return event.taskId;
+  }
+  return 'trace_local';
+}
+
+function getTraceEvents(trace: unknown): AgentEvent[] {
+  if (!Array.isArray(trace)) return [];
+  return trace.filter(isAgentEvent);
+}
+
+function isAgentEvent(value: unknown): value is AgentEvent {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === 'string' &&
+    typeof record.type === 'string' &&
+    typeof record.timestamp === 'number'
+  );
+}
+
+function firstObject(objects: RuntimeObject[], type: RuntimeObjectType): RuntimeObject | undefined {
+  return objects.find((object) => object.type === type);
+}
+
+function latestObject(objects: RuntimeObject[], type: RuntimeObjectType): RuntimeObject | undefined {
+  return [...objects].reverse().find((object) => object.type === type);
+}
+
+function compact(values: Array<string | undefined>): string[] {
+  return values.filter((value): value is string => Boolean(value));
 }

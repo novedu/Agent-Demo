@@ -112,6 +112,8 @@ Goal:
 
 Move `/agent` from a polished runtime console to a deeper Runtime Debugger.
 
+Status: in progress
+
 Scope:
 
 - Formal RuntimeObject schema in frontend documentation
@@ -133,6 +135,16 @@ Scope:
 - Drawer JSON copy, collapse, expand, and raw view polish
 - UI-level demo playback pacing for fast SSE events
 
+Implemented:
+
+- Added frontend RuntimeObject schema with `traceId`, `spanId`, `parentId`, `dependencyIds`, `childIds`, `lifecycle`, and `span`.
+- Added RuntimeSpan projection for Timeline and Drawer.
+- Added dependency context to Inspector.
+- Added Planner and Workflow Inspector templates.
+- Added Timeline trace summary with trace id, root span, span count, event count, duration, and critical path.
+- Added UI-level SSE demo pacing with `VITE_AGENT_DEMO_PACING=false` opt-out.
+- Added RuntimeObject architecture documentation.
+
 Acceptance:
 
 - Selecting any runtime object updates Graph, Timeline, Inspector, Drawer, and Chat evidence consistently.
@@ -146,6 +158,8 @@ Goal:
 Turn Dashboard from placeholder into a runtime overview page.
 
 Scope:
+
+Detailed specification: `docs/PHASE3_DASHBOARD.md`
 
 - Recent Tasks
 - Recent Failures
@@ -170,6 +184,8 @@ Turn Knowledge from supporting evidence into a real Knowledge Center.
 
 Scope:
 
+Detailed specification: `docs/PHASE4_KNOWLEDGE.md`
+
 - Knowledge Sources
 - Document list
 - Chunk viewer
@@ -192,6 +208,8 @@ Make memory observable, explainable, and useful for debugging.
 
 Scope:
 
+Detailed specification: `docs/PHASE5_MEMORY.md`
+
 - Working Memory
 - Semantic Memory
 - Episodic Memory
@@ -200,6 +218,17 @@ Scope:
 - Importance score
 - Related task links
 - Message-to-memory evidence navigation
+
+Implemented:
+
+- Replaced `/memory` placeholder with a real Memory Center.
+- Added current-session memory write timeline.
+- Added Working / Episodic / Semantic memory grouping.
+- Added searchable and filterable Memory Explorer.
+- Added Memory Detail panel with content, importance, task id, event id, update time, and related message when detectable.
+- Derived Memory data from existing `memory`, `messages`, and `memory_update` events without changing Store or backend contracts.
+- Added Agent Workspace navigation for runtime inspection.
+- Avoided fake persistent memory database, memory editing, vector search, and cross-task history features.
 
 Acceptance:
 
@@ -213,6 +242,8 @@ Make answer quality measurable across runs.
 
 Scope:
 
+Detailed specification: `docs/PHASE6_EVALUATION.md`
+
 - Evaluation History
 - Score Trend
 - Leaderboard
@@ -220,6 +251,18 @@ Scope:
 - Failed Cases
 - Regression Review
 - Compare Runs
+
+Implemented:
+
+- Replaced `/evaluation` placeholder with a real Evaluation Center.
+- Added current-run quality scorecard.
+- Added criteria breakdown for completeness, accuracy, groundedness, and task completion.
+- Added feedback review panel.
+- Added runtime context summary with task, answer length, tools, evidence, memory, and event count.
+- Added evaluator lifecycle trace from `evaluation_start` and `evaluation_complete` events.
+- Added honest regression readiness panel that explains which features require backend history.
+- Derived Evaluation data from existing `evaluation`, `events`, `messages`, `tools`, `citations`, and `memory` without changing Store or backend contracts.
+- Avoided fake historical trends, leaderboards, datasets, and compare-runs.
 
 Acceptance:
 
@@ -233,6 +276,8 @@ Move toward LangGraph Studio-style workflow authoring.
 
 Scope:
 
+Detailed specification: `docs/PHASE7_WORKFLOW.md`
+
 - Planner Graph
 - Workflow Graph
 - Node
@@ -242,6 +287,17 @@ Scope:
 - Branch
 - Task Chain
 - Execution Preview
+
+Implemented:
+
+- Replaced `/workflow` placeholder with a real Workflow Center.
+- Added read-only Planner dependency graph from frontend RuntimeObject projection.
+- Added Step Explorer for Planner steps.
+- Added step-to-runtime-object mapping.
+- Added Workflow Detail with Planner goal, selected step, step definition JSON, and runtime mapping JSON.
+- Added Workflow Events panel from current runtime events.
+- Derived Workflow data from existing `plan`, `workflow`, `events`, `tools`, `citations`, `evaluation`, and `messages` without changing Store or backend contracts.
+- Avoided fake drag-and-drop editing, workflow persistence, branch editing, loop editing, and deployment features.
 
 Acceptance:
 
@@ -255,6 +311,8 @@ Goal:
 Prepare Agent Studio for enterprise usage after the core runtime product is strong.
 
 Scope:
+
+Detailed specification: `docs/PHASE8_ENTERPRISE.md`
 
 - Workspace
 - Team
@@ -272,9 +330,41 @@ Scope:
 - Observability documentation
 - Security documentation
 
+Implemented:
+
+- Replaced `/settings` placeholder with a real enterprise readiness Settings page.
+- Added runtime connection inspection from frontend environment configuration.
+- Added SSE contract view for supported Agent Server events.
+- Added current session signal summary.
+- Added enterprise readiness matrix for available, partial, and planned capabilities.
+- Added security boundary section to prevent over-claiming RBAC, SSO, audit, deployment, or secret management.
+- Derived Settings data from existing frontend configuration and Zustand state without changing Store or backend contracts.
+- Avoided fake identity, role, audit, API key, deployment, billing, and monitoring features.
+
 Acceptance:
 
 - The platform can be evaluated for real enterprise deployment.
+
+## Portfolio Demo Package
+
+Status: implemented.
+
+Scope:
+
+- Root README
+- Demo script
+- Portfolio review
+- Interview talking points
+- Honest capability boundaries
+- Local run and verification instructions
+
+Implemented:
+
+- Added `README.md`.
+- Added `docs/DEMO_SCRIPT.md`.
+- Added `docs/PORTFOLIO_REVIEW.md`.
+- Documented the primary demo path from `/agent` to Dashboard, Knowledge, Memory, Evaluation, Workflow, and Settings.
+- Clarified current real capabilities vs planned enterprise capabilities.
 
 ## Version Mapping
 

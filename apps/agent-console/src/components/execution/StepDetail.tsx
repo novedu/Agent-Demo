@@ -26,6 +26,12 @@ export function StepDetail({ object }: StepDetailProps) {
     () => ({
       id: object.id,
       type: object.type,
+      traceId: object.traceId,
+      spanId: object.spanId,
+      parentId: object.parentId,
+      dependencyIds: object.dependencyIds,
+      childIds: object.childIds,
+      lifecycle: object.lifecycle,
       title: object.title,
       summary: object.summary,
       status: object.status,
@@ -38,6 +44,7 @@ export function StepDetail({ object }: StepDetailProps) {
       reasoning: object.reasoning,
       metadata: object.metadata,
       trace: object.trace,
+      span: object.span,
       tokenCount: object.tokenCount,
       retryCount: object.retryCount,
       cost: object.cost,
@@ -71,8 +78,32 @@ export function StepDetail({ object }: StepDetailProps) {
       )}
       {activeTab === 'output' && <SmartBlock title="Output" value={object.output} />}
       {activeTab === 'reasoning' && <SmartBlock title="Reasoning Summary" value={getReasoning(object)} />}
-      {activeTab === 'trace' && <JsonViewer title="Trace" value={object.trace} />}
-      {activeTab === 'metadata' && <JsonViewer title="Metadata" value={object.metadata} />}
+      {activeTab === 'trace' && (
+        <JsonViewer
+          title="Trace Span"
+          value={{
+            traceId: object.traceId,
+            spanId: object.spanId,
+            parentId: object.parentId,
+            lifecycle: object.lifecycle,
+            span: object.span,
+            events: object.trace,
+          }}
+        />
+      )}
+      {activeTab === 'metadata' && (
+        <JsonViewer
+          title="Metadata"
+          value={{
+            metadata: object.metadata,
+            dependencies: {
+              parentId: object.parentId,
+              dependencyIds: object.dependencyIds,
+              childIds: object.childIds,
+            },
+          }}
+        />
+      )}
       {activeTab === 'raw' && <JsonViewer title="Raw Runtime Object" value={raw} />}
     </div>
   );
@@ -99,10 +130,15 @@ function Overview({ object }: { object: RuntimeObject }) {
       <dl className="grid grid-cols-2 gap-3 text-xs">
         <Detail label="Component" value={object.title} />
         <Detail label="Type" value={object.type} />
+        <Detail label="Lifecycle" value={object.lifecycle} />
         <Detail label="Duration" value={formatDuration(object.duration)} />
         <Detail label="Retry" value={String(object.retryCount ?? 0)} />
         <Detail label="Tokens" value={String(object.tokenCount ?? 0)} />
         <Detail label="Source Kind" value={node.kind} />
+        <Detail label="Trace ID" value={shortId(object.traceId)} />
+        <Detail label="Span ID" value={shortId(object.spanId)} />
+        <Detail label="Parent" value={object.parentId ?? '-'} />
+        <Detail label="Dependencies" value={object.dependencyIds.length ? object.dependencyIds.join(', ') : '-'} />
         <Detail label="Start" value={formatTime(object.startTime)} />
         <Detail label="End" value={formatTime(object.endTime)} />
       </dl>
@@ -152,4 +188,8 @@ function formatDuration(duration?: number): string {
 function formatTime(timestamp?: number): string {
   if (!timestamp) return '-';
   return new Date(timestamp).toLocaleTimeString();
+}
+
+function shortId(value: string): string {
+  return value.length > 18 ? value.slice(-18) : value;
 }

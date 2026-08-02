@@ -5,6 +5,30 @@ export interface CreateAgentTaskResponse {
   status: string;
 }
 
+export type AgentTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface AgentTaskStatusResponse {
+  taskId: string;
+  status: AgentTaskStatus;
+  currentStep?: string;
+  progress: number;
+  createdAt: number;
+  retryCount: number;
+  maxRetry: number;
+  lastError?: string;
+}
+
+export interface AgentTaskListResponse {
+  tasks: AgentTaskStatusResponse[];
+}
+
+export interface RetryAgentTaskResponse {
+  taskId: string;
+  status: 'queued' | 'running';
+  retryCount: number;
+  maxRetry: number;
+}
+
 export interface AgentEventSubscription {
   close: () => void;
 }
@@ -62,6 +86,29 @@ export async function cancelAgentTask(taskId: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`Cancel Agent task failed: ${response.status} ${await response.text()}`);
   }
+}
+
+export async function listAgentTasks(): Promise<AgentTaskStatusResponse[]> {
+  const response = await fetch(`${getAgentServerURL()}/api/agent/tasks`);
+
+  if (!response.ok) {
+    throw new Error(`List Agent tasks failed: ${response.status} ${await response.text()}`);
+  }
+
+  const payload = (await response.json()) as AgentTaskListResponse;
+  return Array.isArray(payload.tasks) ? payload.tasks : [];
+}
+
+export async function retryAgentTask(taskId: string): Promise<RetryAgentTaskResponse> {
+  const response = await fetch(`${getAgentServerURL()}/api/agent/tasks/${taskId}/retry`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Retry Agent task failed: ${response.status} ${await response.text()}`);
+  }
+
+  return response.json() as Promise<RetryAgentTaskResponse>;
 }
 
 export function subscribeAgentEvents(

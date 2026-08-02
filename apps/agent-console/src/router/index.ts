@@ -3,7 +3,11 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AgentConsole } from '../features/agent-console/AgentConsole';
 import { StudioLayout } from '../layout/StudioLayout';
 import { Dashboard } from '../pages/Dashboard';
-import { PlaceholderPage } from '../pages/PlaceholderPage';
+import { Evaluation } from '../pages/Evaluation';
+import { Knowledge } from '../pages/Knowledge';
+import { Memory } from '../pages/Memory';
+import { Settings } from '../pages/Settings';
+import { Workflow } from '../pages/Workflow';
 
 export const router = createBrowserRouter([
   {
@@ -24,38 +28,23 @@ export const router = createBrowserRouter([
       },
       {
         path: 'workflow',
-        element: createElement(PlaceholderPage, {
-          title: 'Workflow Builder',
-          description: 'Plan and workflow design surface placeholder.',
-        }),
+        element: createElement(Workflow),
       },
       {
         path: 'knowledge',
-        element: createElement(PlaceholderPage, {
-          title: 'Knowledge Center',
-          description: 'Knowledge source management placeholder.',
-        }),
+        element: createElement(Knowledge),
       },
       {
         path: 'memory',
-        element: createElement(PlaceholderPage, {
-          title: 'Memory Center',
-          description: 'Long-term memory inspection placeholder.',
-        }),
+        element: createElement(Memory),
       },
       {
         path: 'evaluation',
-        element: createElement(PlaceholderPage, {
-          title: 'Evaluation Center',
-          description: 'Evaluation datasets and scorecard placeholder.',
-        }),
+        element: createElement(Evaluation),
       },
       {
         path: 'settings',
-        element: createElement(PlaceholderPage, {
-          title: 'Settings',
-          description: 'Environment and workspace settings placeholder.',
-        }),
+        element: createElement(Settings),
       },
     ],
   },

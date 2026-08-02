@@ -171,6 +171,17 @@ export function FitViewIcon(props: IconProps) {
   );
 }
 
+export function RefreshIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M20 11a8 8 0 0 0-14.7-4.2L4 8" />
+      <path d="M4 4v4h4" />
+      <path d="M4 13a8 8 0 0 0 14.7 4.2L20 16" />
+      <path d="M20 20v-4h-4" />
+    </BaseIcon>
+  );
+}
+
 export function PlayIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

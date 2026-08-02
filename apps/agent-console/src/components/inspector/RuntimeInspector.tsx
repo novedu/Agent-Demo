@@ -13,6 +13,8 @@ export function RuntimeInspector({
   currentNode,
   nodes,
   events,
+  plan,
+  state,
   memory,
   citations,
   evaluation,
@@ -65,6 +67,8 @@ export function RuntimeInspector({
             nodeCount={nodes.length}
             defaultOpen={defaultOpen}
             events={events}
+            plan={plan}
+            state={state}
             memory={memory}
             citations={citations}
             evaluation={evaluation}
@@ -96,6 +100,8 @@ interface RuntimeObjectInspectorProps {
   nodeCount: number;
   defaultOpen: string;
   events: RuntimeInspectorProps['events'];
+  plan: RuntimeInspectorProps['plan'];
+  state: RuntimeInspectorProps['state'];
   memory: RuntimeInspectorProps['memory'];
   citations: RuntimeInspectorProps['citations'];
   evaluation: RuntimeInspectorProps['evaluation'];
@@ -116,6 +122,8 @@ function RuntimeObjectInspector({
   nodeCount,
   defaultOpen,
   events,
+  plan,
+  state,
   memory,
   citations,
   evaluation,
@@ -133,6 +141,8 @@ function RuntimeObjectInspector({
   const sections = buildObjectSections({
     object,
     events,
+    plan,
+    state,
     memory,
     citations,
     evaluation,
@@ -164,6 +174,8 @@ function RuntimeObjectInspector({
           <Metric label="Duration" value={formatDuration(object.duration)} />
           <Metric label="Token" value={String(object.tokenCount ?? 0)} />
           <Metric label="Retry" value={String(object.retryCount ?? 0)} />
+          <Metric label="Lifecycle" value={object.lifecycle} />
+          <Metric label="Span" value={shortId(object.spanId)} />
           <Metric label="Objects" value={`${nodeCount}`} />
         </div>
       </section>
@@ -183,6 +195,8 @@ function RuntimeObjectInspector({
 function buildObjectSections({
   object,
   events,
+  plan,
+  state,
   memory,
   citations,
   evaluation,
@@ -210,6 +224,12 @@ function buildObjectSections({
       />
     ),
   };
+  const dependencySection = {
+    id: 'dependencies',
+    title: 'Dependency Context',
+    meta: <Badge>{object.dependencyIds.length} deps</Badge>,
+    children: <DependencyContext object={object} />,
+  };
   const logsSection = {
     id: 'logs',
     title: 'Runtime Logs',
@@ -223,6 +243,34 @@ function buildObjectSections({
       />
     ),
   };
+
+  if (object.type === 'planner') {
+    return [
+      section('execution', 'Planner Output', <Badge tone={plan ? 'success' : 'neutral'}>{plan ? `${plan.steps.length} steps` : 'pending'}</Badge>, (
+        <JsonViewer title="Plan" value={plan ?? object.output} collapsed />
+      )),
+      section('input', 'Planner Input', <Badge tone="info">goal</Badge>, (
+        <JsonViewer title="Planner Input" value={object.input} collapsed />
+      )),
+      dependencySection,
+      sharedTraceSection,
+      logsSection,
+    ];
+  }
+
+  if (object.type === 'workflow') {
+    return [
+      section('execution', 'Workflow State', <Badge tone={state ? 'info' : 'neutral'}>{state?.status ?? object.status}</Badge>, (
+        <JsonViewer title="Workflow State" value={state ?? object.output} collapsed />
+      )),
+      section('input', 'Workflow Plan', <Badge>{plan?.steps.length ?? 0} steps</Badge>, (
+        <JsonViewer title="Workflow Input" value={object.input ?? plan} collapsed />
+      )),
+      dependencySection,
+      sharedTraceSection,
+      logsSection,
+    ];
+  }
 
   if (object.type === 'tool') {
     return [
@@ -239,9 +287,12 @@ function buildObjectSections({
             ['Duration', formatDuration(object.duration)],
             ['Retry', String(object.retryCount ?? 0)],
             ['Tokens', String(object.tokenCount ?? 0)],
+            ['Trace', shortId(object.traceId)],
+            ['Parent', object.parentId ?? '-'],
           ]}
         />
       )),
+      dependencySection,
       sharedTraceSection,
       logsSection,
     ];
@@ -260,6 +311,7 @@ function buildObjectSections({
       section('query', 'Retriever Input', <Badge tone="info">RAG</Badge>, (
         <JsonViewer title="Retriever Input" value={object.input} collapsed />
       )),
+      dependencySection,
       sharedTraceSection,
       logsSection,
     ];
@@ -278,6 +330,7 @@ function buildObjectSections({
       section('metadata', 'Memory Metadata', <Badge>metadata</Badge>, (
         <JsonViewer title="Memory Metadata" value={object.metadata ?? object.output} collapsed />
       )),
+      dependencySection,
       sharedTraceSection,
       logsSection,
     ];
@@ -298,6 +351,7 @@ function buildObjectSections({
       section('reasoning', 'Feedback', <Badge tone="info">judge</Badge>, (
         <JsonViewer title="Evaluation Feedback" value={evaluation?.feedback ?? object.output} collapsed />
       )),
+      dependencySection,
       sharedTraceSection,
       logsSection,
     ];
@@ -326,6 +380,7 @@ function buildObjectSections({
           onViewTrace={onEvaluationTrace}
         />
       )),
+      dependencySection,
       sharedTraceSection,
     ];
   }
@@ -338,6 +393,7 @@ function buildObjectSections({
       section('input', 'Reflection Input', <Badge>input</Badge>, (
         <JsonViewer title="Reflection Input" value={object.input} collapsed />
       )),
+      dependencySection,
       sharedTraceSection,
       logsSection,
     ];
@@ -353,6 +409,7 @@ function buildObjectSections({
     section('output', 'Output', <Badge tone="success">Result</Badge>, (
       <JsonViewer title="Output" value={object.output} collapsed />
     )),
+    dependencySection,
     sharedTraceSection,
     logsSection,
   ];
@@ -368,6 +425,37 @@ function ObjectMetrics({ rows }: { rows: Array<[string, string]> }) {
       {rows.map(([label, value]) => (
         <RuntimeContextRow key={label} label={label} value={value} />
       ))}
+    </div>
+  );
+}
+
+function DependencyContext({
+  object,
+}: {
+  object: RuntimeInspectorProps['runtimeObjects'][number];
+}) {
+  return (
+    <div className="space-y-3">
+      <ObjectMetrics
+        rows={[
+          ['Trace ID', shortId(object.traceId)],
+          ['Span ID', shortId(object.spanId)],
+          ['Parent', object.parentId ?? '-'],
+          ['Lifecycle', object.lifecycle],
+          ['Children', object.childIds.length ? object.childIds.join(', ') : '-'],
+        ]}
+      />
+      <JsonViewer
+        title="Dependency Graph Projection"
+        value={{
+          objectId: object.id,
+          parentId: object.parentId,
+          dependencyIds: object.dependencyIds,
+          childIds: object.childIds,
+          span: object.span,
+        }}
+        collapsed
+      />
     </div>
   );
 }
@@ -466,6 +554,10 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+}
+
+function shortId(value: string): string {
+  return value.length > 18 ? value.slice(-18) : value;
 }
 
 function getDefaultOpenSection(focusType?: string, focusSection?: string): string {
