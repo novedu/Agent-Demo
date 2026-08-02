@@ -471,7 +471,7 @@ function EmptyInspector({
         <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-blue-700">
           Selected Runtime Object
         </div>
-        <h3 className="mt-1 text-sm font-semibold text-ink">No object selected</h3>
+        <h3 className="mt-1 text-sm font-semibold text-ink">Runtime overview</h3>
         <p className="mt-2 text-xs leading-5 text-muted">
           Select a graph node or timeline span to inspect the runtime object that produced it.
         </p>
@@ -592,6 +592,6 @@ function readTokenCount(payload: unknown): number {
 }
 
 function formatDuration(duration?: number): string {
-  if (duration === undefined) return '-';
+  if (duration === undefined) return 'pending';
   return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
 }

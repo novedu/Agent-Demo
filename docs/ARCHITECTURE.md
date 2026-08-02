@@ -109,12 +109,9 @@ This keeps the UI coherent without changing runtime business logic.
 
 ## Existing Architecture Notes
 
-Detailed architecture notes live under:
+Detailed runtime-object projection notes live under:
 
 ```text
 docs/architecture/
-├── architecture.md
-├── frontend.md
-├── runtime.md
-└── server.md
+└── runtime-object.md
 ```

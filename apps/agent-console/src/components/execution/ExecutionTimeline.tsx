@@ -446,7 +446,7 @@ function formatDuration(duration?: number): string {
 }
 
 function formatTime(timestamp?: number): string {
-  if (!timestamp) return '--:--:--';
+  if (!timestamp) return 'Queued';
   return new Date(timestamp).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',

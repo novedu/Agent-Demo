@@ -89,7 +89,7 @@ final_answer
 task_complete
 ```
 
-## Screenshots
+## Demo Screenshots
 
 All screenshots are captured from the local demo task:
 
@@ -97,15 +97,49 @@ All screenshots are captured from the local demo task:
 分析华东区域销售下降原因，并生成报告
 ```
 
-| Stage | What It Shows | Screenshot |
-| --- | --- | --- |
-| Idle Runtime Console | Before the task starts: ready state, quick demo entry, runtime path, and inspector overview. | ![Idle Runtime Console](docs/screenshots/01-agent-idle.jpg) |
-| Running Agent Task | The sales decline task is active and the console is following the current runtime object. | ![Running Agent Task](docs/screenshots/02-agent-running.jpg) |
-| Tool Call | ToolExecutor calls sales-data and metric tools, while Chat, Graph, Timeline, and Inspector update together. | ![Tool Call](docs/screenshots/03-tool-call.jpg) |
-| Knowledge Retrieval | RAG retrieves evidence for East China sales decline causes and exposes source chunks. | ![Knowledge Retrieval](docs/screenshots/04-knowledge-retrieval.jpg) |
-| Debug Timeline | Timeline shows runtime spans, duration, component, status, retry, token, and trace context. | ![Debug Timeline](docs/screenshots/05-debug-timeline.jpg) |
-| Runtime Inspector | Final Answer object selected: inspector explains output, evidence, dependency context, and trace spans. | ![Runtime Inspector](docs/screenshots/06-inspector.jpg) |
-| Evaluation | Evaluation Center shows score, criteria, feedback, and quality review for the completed sales task. | ![Evaluation](docs/screenshots/07-evaluation.jpg) |
+The seven frames below follow one runtime session from idle to evaluation. They are intentionally shown as full-width frames so the runtime behavior remains legible on the GitHub project page.
+
+### 1. Idle Runtime Console
+
+Ready state before the task starts: quick demo entry, runtime path, and the initial Inspector context.
+
+![Idle Runtime Console](docs/screenshots/01-agent-idle.jpg)
+
+### 2. Running Agent Task
+
+The sales decline task is active and the console follows the current `RuntimeObject`.
+
+![Running Agent Task](docs/screenshots/02-agent-running.jpg)
+
+### 3. Tool Call
+
+`ToolExecutor` calls sales-data and metric tools while Chat, Graph, Timeline, and Inspector update together.
+
+![Tool Call](docs/screenshots/03-tool-call.jpg)
+
+### 4. Knowledge Retrieval
+
+RAG retrieves evidence for the East China sales decline causes and exposes source chunks.
+
+![Knowledge Retrieval](docs/screenshots/04-knowledge-retrieval.jpg)
+
+### 5. Debug Timeline
+
+The Timeline shows runtime spans, duration, component, status, retry, token, and trace context.
+
+![Debug Timeline](docs/screenshots/05-debug-timeline.jpg)
+
+### 6. Runtime Inspector
+
+The selected Final Answer object exposes output, evidence, dependencies, and trace spans.
+
+![Runtime Inspector](docs/screenshots/06-inspector.jpg)
+
+### 7. Evaluation
+
+Evaluation Center shows score, criteria, feedback, and quality review for the completed sales task.
+
+![Evaluation](docs/screenshots/07-evaluation.jpg)
 
 ## Tech Stack
 
@@ -177,6 +211,12 @@ Install dependencies:
 npm install
 ```
 
+Optional: copy the frontend environment template if you want to customize local settings.
+
+```bash
+cp apps/agent-console/.env.example apps/agent-console/.env
+```
+
 Start the Runtime Server:
 
 ```bash
@@ -210,7 +250,7 @@ http://127.0.0.1:3001/health
 Frontend environment:
 
 ```text
-apps/agent-console/.env
+apps/agent-console/.env.example
 VITE_AGENT_SERVER_URL=http://127.0.0.1:3001
 ```
 

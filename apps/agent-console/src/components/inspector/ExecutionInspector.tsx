@@ -92,6 +92,6 @@ function toRecord(value: unknown): Record<string, unknown> {
 }
 
 function formatDuration(duration?: number): string {
-  if (duration === undefined) return '-';
+  if (duration === undefined) return 'pending';
   return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
 }

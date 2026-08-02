@@ -73,7 +73,7 @@ export function EvaluationDashboard({
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-xl border border-dashed border-lineStrong bg-panel p-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-            Radar Placeholder
+            Criteria Radar
           </div>
           <div className="mx-auto mt-3 flex h-20 w-20 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700">
             Radar
@@ -81,7 +81,7 @@ export function EvaluationDashboard({
         </div>
         <div className="rounded-xl border border-dashed border-lineStrong bg-panel p-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-            Trend Placeholder
+            Score Trend
           </div>
           <div className="mt-3 flex h-20 items-end gap-1">
             {criteria.map(([key]) => (
@@ -114,6 +114,6 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function formatDuration(duration?: number): string {
-  if (duration === undefined) return '-';
+  if (duration === undefined) return 'pending';
   return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
 }

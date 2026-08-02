@@ -43,7 +43,7 @@ export interface SubscribeAgentEventsOptions {
   onClose?: () => void;
 }
 
-const agentServerURL = (import.meta.env.VITE_AGENT_SERVER_URL ?? '').replace(/\/$/, '');
+const agentServerURL = (import.meta.env.VITE_AGENT_SERVER_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '');
 
 const supportedEventTypes: AgentEventType[] = [
   'task_created',
@@ -163,10 +163,6 @@ export function subscribeAgentEvents(
 }
 
 export function getAgentServerURL(): string {
-  if (!agentServerURL) {
-    throw new Error('VITE_AGENT_SERVER_URL is required');
-  }
-
   return agentServerURL;
 }
 
