@@ -4,19 +4,19 @@ Use this script for portfolio demos, interviews, screen recordings, and project 
 
 ## Demo Goal
 
-Show that Agent Studio is not an AI chat demo. It is an Agent Runtime Debugger.
+Show that Agent Studio is not an AI chat demo. It is an Agent Runtime Studio.
 
-The viewer should understand in 3 minutes:
+The viewer should understand:
 
 ```text
-The user asks a business question.
-The Agent plans.
-The Agent executes tools.
-The Agent retrieves knowledge.
-The Agent writes memory.
-The Agent reflects.
-The Agent evaluates.
-The Studio explains every step.
+User asks a business question.
+Agent plans.
+Agent executes tools.
+Agent retrieves knowledge.
+Agent writes memory.
+Agent reflects.
+Agent evaluates.
+Studio explains every step.
 ```
 
 ## Setup
@@ -39,15 +39,91 @@ Open:
 http://127.0.0.1:5173/agent
 ```
 
-## Primary Demo Input
+Primary input:
 
 ```text
 分析华东区域销售下降原因，并生成报告
 ```
 
-## 5-Minute Walkthrough
+## 3-Minute Demo
 
-### 1. Open Agent Workspace
+Audience: recruiter, hiring manager, or first-round interviewer.
+
+### 0:00-0:30 Positioning
+
+Say:
+
+```text
+This is an AI Agent Runtime Studio. It is designed to show how an agent plans, executes tools, retrieves knowledge, writes memory, reflects, evaluates, and produces an answer.
+```
+
+Show:
+
+- `/agent`
+- Chat as primary workspace
+- Runtime Graph
+- Debug Timeline
+- Runtime Inspector
+
+### 0:30-1:30 Run The Demo Task
+
+Click:
+
+```text
+Run full demo
+```
+
+or submit:
+
+```text
+分析华东区域销售下降原因，并生成报告
+```
+
+Say:
+
+```text
+The frontend creates a real task through the Runtime Server, then subscribes to SSE. The UI is not a static animation; it reacts to runtime events.
+```
+
+Point out:
+
+- Planner event appears
+- Tool calls execute
+- Knowledge chunks appear
+- Memory updates
+- Reflection and Evaluation complete
+- Answer streams into Chat
+
+### 1:30-2:20 Explain Synchronization
+
+Click a Graph node or Timeline span.
+
+Say:
+
+```text
+Raw SSE events are projected into RuntimeObjects. Chat, Graph, Timeline, Inspector, and Drawer all synchronize around the same selected RuntimeObject.
+```
+
+Show:
+
+- selected node
+- highlighted timeline item
+- inspector detail
+- drawer JSON / input / output
+
+### 2:20-3:00 Close With Project Value
+
+Say:
+
+```text
+The project demonstrates both frontend runtime visualization and backend agent infrastructure: Planner, WorkflowRunner, ToolExecutor, RAG, Memory, Reflection, Evaluation, TaskManager, and SSE.
+```
+
+## 10-Minute Demo
+
+Audience: frontend / full-stack technical interview.
+
+### 1. Workspace Overview
 
 Route:
 
@@ -55,221 +131,277 @@ Route:
 /agent
 ```
 
-Say:
+Explain:
 
-```text
-This is the core product surface. Chat is the primary workspace. Graph, Timeline, and Inspector explain the runtime instead of competing with the conversation.
-```
+- Chat is the product.
+- Graph explains runtime dependency.
+- Timeline debugs runtime flow.
+- Inspector explains the selected runtime object.
+- Drawer is used for deep object inspection.
 
-Show:
+### 2. Task Lifecycle
 
-- Chat input
-- Runtime banner
-- Compact runtime graph
-- Debug timeline
-- Right-side inspector
-
-### 2. Run The Sales Decline Task
-
-Submit:
+Run:
 
 ```text
 分析华东区域销售下降原因，并生成报告
 ```
 
+Explain:
+
+```text
+createAgentTask(input)
+  -> POST /api/agent/tasks
+  -> Runtime Server creates task
+  -> Agent Runtime emits events
+  -> EventSource subscribes to /events
+  -> Zustand updates state
+  -> RuntimeObject projection updates the UI
+```
+
+### 3. Frontend Architecture
+
+Open or describe:
+
+```text
+apps/agent-console/src/
+```
+
+Focus on:
+
+- `services/agent.ts`: API + EventSource client
+- `hooks/useAgentStream.ts`: stream lifecycle
+- `store/agentStore.ts`: session state and event reducer
+- `features/agent-console/runtime-object-model.ts`: RuntimeObject projection
+- `components/execution/`: graph, timeline, drawer
+- `components/inspector/`: object-driven inspection
+
+### 4. Agent Runtime Architecture
+
+Explain backend modules:
+
+```text
+packages/agent-runtime/src/
+├── planner
+├── workflow
+├── tool
+├── rag
+├── memory
+├── reflection
+├── evaluation
+└── observability
+```
+
 Say:
 
 ```text
-The frontend creates a task through the Runtime Server and subscribes to SSE. The page is not playing a static animation. It is reacting to Agent events.
+The frontend does not import runtime classes directly. It uses API contracts and SSE events, which keeps the console decoupled from the runtime implementation.
 ```
 
-Watch for:
+### 5. Failure Recovery Demo
 
-- Assistant streaming
-- Planner event
-- Tool call
-- RAG retrieval
-- Memory update
+Click:
+
+```text
+Failure -> Retry
+```
+
+Show:
+
+- Tool Error
+- Task Retry
 - Reflection
-- Evaluation
-- Final answer
-
-### 3. Explain RuntimeObject
-
-Click graph or timeline items.
+- Success
+- Inspector metadata
 
 Say:
 
 ```text
-Raw SSE events are projected into a frontend RuntimeObject model. Chat, Graph, Timeline, Inspector, and Drawer all point to the same selected runtime object.
+This demo proves the UI is not only for happy-path execution. It can explain failure, retry, recovery, and final success.
+```
+
+### 6. Supporting Pages
+
+Briefly show:
+
+- `/dashboard`: runtime overview
+- `/knowledge`: current-session RAG evidence
+- `/memory`: working / episodic / semantic memory
+- `/evaluation`: scorecard and feedback
+- `/workflow`: planner / workflow mapping
+- `/settings`: runtime boundary and readiness
+
+Keep the message clear:
+
+```text
+The strongest page is /agent. Other pages support the portfolio story and are intentionally scoped.
+```
+
+## 30-Minute Demo
+
+Audience: senior frontend, AI platform, or agent infrastructure interview.
+
+### 0-5 Minutes: Product Positioning
+
+Explain:
+
+- why chat alone is not enough for agents
+- why agent developers need observability
+- why RuntimeObject exists
+- why the project avoids fake RBAC / billing / SaaS features
+
+Key statement:
+
+```text
+The project is optimized for job interviews: one advanced page, real runtime capability, explainable architecture, and honest boundaries.
+```
+
+### 5-12 Minutes: Live Runtime Walkthrough
+
+Run the primary task.
+
+Trace the UI:
+
+```text
+Chat -> Graph -> Timeline -> Inspector -> Drawer -> Final Answer
+```
+
+For each runtime phase, explain:
+
+- What event arrived?
+- How did Zustand update?
+- Which RuntimeObject changed?
+- Which UI surfaces reacted?
+- What would an engineer debug here?
+
+### 12-18 Minutes: Backend Runtime Walkthrough
+
+Explain:
+
+```text
+Runtime Server
+  -> TaskManager
+  -> AgentRuntimeAdapter
+  -> Agent
+  -> Planner
+  -> WorkflowRunner
+  -> ToolExecutor
+  -> RAG
+  -> Memory
+  -> Reflection
+  -> Evaluation
+  -> SSE event stream
+```
+
+Focus on interview-relevant details:
+
+- task lifecycle
+- cancel / retry
+- event contract
+- tool registry
+- memory categories
+- evaluation result shape
+- trace and metrics primitives
+
+### 18-24 Minutes: Frontend Runtime Visualization
+
+Explain:
+
+```text
+Raw AgentEvent[] is too low-level for UI.
+RuntimeObject is the frontend projection layer.
 ```
 
 Show:
 
-- Selected graph node
-- Timeline highlight
-- Inspector context
-- Drawer details
-
-### 4. Open Dashboard
-
-Route:
-
-```text
-/dashboard
-```
+- Graph node selection
+- Timeline span expansion
+- Drawer tabs
+- Inspector context mode
+- Evidence navigation
 
 Say:
 
 ```text
-Dashboard is not the main product. It is an operational overview. It reads real task history from the Runtime Server and current-session signals from the console store.
+The important design decision is not just drawing a graph. It is making every surface point to the same selected runtime object.
 ```
 
-Show:
+### 24-28 Minutes: Failure Recovery
 
-- Current runtime
-- Recent tasks
-- Failures and retry
-- Runtime signals
-
-### 5. Open Knowledge
-
-Route:
+Run:
 
 ```text
-/knowledge
+Failure -> Retry
 ```
+
+Explain:
+
+- why failure cases matter for agent tooling
+- how `tool_error` and `task_retry` become visible
+- how Reflection validates recovery
+- why this helps an engineer trust the runtime
+
+### 28-30 Minutes: Roadmap And Boundaries
 
 Say:
 
 ```text
-This page explains why the answer is grounded. It shows retrieved chunks, sources, scores, query metadata, and citation detail from the current run.
+Next useful portfolio steps are runtime deepening, richer span tree search, Knowledge Platform, Memory Platform, and Evaluation history. I would not add billing, RBAC, SSO, or multi-tenant features unless the target role requires enterprise SaaS.
 ```
 
-Show:
+## Interview Q&A
 
-- Retriever runs
-- Sources
-- Chunk Explorer
-- Citation Detail
+### Why not just build a chat UI?
 
-Important:
+Because agent work is not only answering. It includes planning, tool execution, retrieval, memory, reflection, and evaluation. The UI must expose that lifecycle.
 
-```text
-Knowledge is current-session evidence only. Refreshing the page clears Zustand session state unless persistence is added later.
-```
+### What is the strongest technical point?
 
-### 6. Open Memory
+The RuntimeObject projection layer. It converts streamed runtime events into a shared object model for Graph, Timeline, Inspector, Drawer, Evidence, Memory, and Evaluation.
 
-Route:
+### What is real versus mocked?
 
-```text
-/memory
-```
+Real:
 
-Say:
+- Runtime Server
+- task creation
+- EventSource streaming
+- Planner
+- tool calls
+- local RAG retrieval
+- memory writes
+- reflection
+- evaluation
+- runtime UI synchronization
 
-```text
-This page shows what the Agent wrote into memory. It separates Working, Episodic, and Semantic memory so developers can inspect what context the runtime retained.
-```
+Scoped / future:
 
-Show:
+- persistent vector database
+- persistent memory database
+- historical evaluation dataset
+- editable workflow deployment
+- enterprise RBAC / SSO / audit
 
-- Memory Timeline
-- Working / Episodic / Semantic map
-- Memory Explorer
-- Memory Detail
+### What would you improve next?
 
-### 7. Open Evaluation
+For job-search impact:
 
-Route:
+1. richer span tree search / filters
+2. better Knowledge chunk drill-down
+3. memory graph
+4. evaluation history comparison
+5. short screen-recorded demo video
 
-```text
-/evaluation
-```
+## Demo Checklist
 
-Say:
+Before recording or interviewing:
 
-```text
-This page reviews answer quality. The evaluator scores completeness, accuracy, groundedness, and task completion, then gives feedback.
-```
-
-Show:
-
-- Overall score
-- Criteria breakdown
-- Feedback review
-- Evaluation trace
-- Regression readiness boundary
-
-### 8. Open Workflow
-
-Route:
-
-```text
-/workflow
-```
-
-Say:
-
-```text
-This is the foundation for a future Workflow Builder. Today it is read-only and maps Planner steps to runtime objects and workflow events.
-```
-
-Show:
-
-- Planner dependency graph
-- Step Explorer
-- Step definition JSON
-- Runtime mapping JSON
-
-### 9. Open Settings
-
-Route:
-
-```text
-/settings
-```
-
-Say:
-
-```text
-Settings makes enterprise readiness explicit. It shows what exists today and what is planned, without pretending RBAC, SSO, Audit, or Deployment are already implemented.
-```
-
-Show:
-
-- Runtime connection
-- SSE contract
-- Enterprise readiness matrix
-- Security boundary
-
-## 60-Second Pitch
-
-```text
-Agent Studio is an enterprise runtime debugger for AI agents.
-
-The backend includes a TypeScript Agent Runtime with Planner, WorkflowRunner, Tools, RAG, Memory, Reflection, Evaluation, Observability, and a Node Runtime Server with task lifecycle and SSE.
-
-The frontend is a React Runtime Studio. It turns raw Agent events into RuntimeObjects, then synchronizes Chat, Graph, Timeline, Inspector, Drawer, Knowledge, Memory, Evaluation, Workflow, and Settings around the same runtime context.
-
-The key demo is a sales decline analysis task. You can watch the Agent plan, call tools, retrieve knowledge, write memory, reflect, evaluate, and generate a Markdown answer.
-
-The project is honest about its boundaries: current-session evidence is real, but persistent vector DB, RBAC, SSO, audit, deployment, and datasets are planned future enterprise features.
-```
-
-## What To Emphasize In Interviews
-
-- This is not only UI. The runtime server and SSE flow are real.
-- The console does not directly call runtime classes. It goes through API contracts.
-- RuntimeObject projection is the frontend architecture bridge between raw events and professional debugging UI.
-- The product avoids fake enterprise claims.
-- The roadmap shows how the product can evolve from portfolio demo to enterprise platform.
-
-## Known Demo Limits
-
-- Session state is stored in Zustand only.
-- Knowledge, Memory, and Evaluation pages inspect the current run.
-- Historical trends require backend persistence.
-- Workflow Builder is currently read-only.
-- Settings is a readiness surface, not a configuration writer.
+- Runtime Server is running on `3001`.
+- React Console is running on `5173`.
+- `/agent` opens in Idle state.
+- `Run full demo` completes successfully.
+- `Failure -> Retry` completes successfully.
+- Graph node click opens Drawer.
+- Timeline click updates Inspector.
+- Evaluation page shows score and feedback.
+- README screenshots are current.

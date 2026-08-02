@@ -80,6 +80,8 @@ export function AgentConsole() {
   const [highlightedCitationId, setHighlightedCitationId] = useState<string>();
   const [highlightedMemoryId, setHighlightedMemoryId] = useState<string>();
   const [highlightedTraceId, setHighlightedTraceId] = useState<string>();
+  const focusedObjectType = focusedRuntimeObject?.type;
+  const focusedObjectId = focusedRuntimeObject?.id;
   const activeNodeId = focusedNodeId ?? currentNodeId;
   const currentNode = displayNodes.find((node) => node.id === currentNodeId);
   const activeNode = displayNodes.find((node) => node.id === activeNodeId) ?? currentNode;
@@ -129,11 +131,27 @@ export function AgentConsole() {
       return;
     }
 
-    if ((autoFollowRuntime || !focusedRuntimeObject) && currentNode) {
-      setFocusedRuntimeObject({ type: 'node', id: currentNode.id, node: currentNode });
-      setFocusedNodeId(currentNode.id);
+    if (!currentNode || (!autoFollowRuntime && focusedRuntimeObject)) {
+      return;
     }
-  }, [autoFollowRuntime, currentNode, focusedRuntimeObject, hasTaskActivity]);
+
+    if (focusedObjectType === 'node' && focusedObjectId === currentNode.id && focusedNodeId === currentNode.id) {
+      return;
+    }
+
+    if (autoFollowRuntime || !focusedRuntimeObject) {
+      setFocusedRuntimeObject({ type: 'node', id: currentNode.id, node: currentNode });
+      setFocusedNodeId((previous) => (previous === currentNode.id ? previous : currentNode.id));
+    }
+  }, [
+    autoFollowRuntime,
+    currentNode,
+    focusedNodeId,
+    focusedObjectId,
+    focusedObjectType,
+    focusedRuntimeObject,
+    hasTaskActivity,
+  ]);
 
   useEffect(
     () => () => {
