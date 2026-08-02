@@ -14,7 +14,7 @@ import { classNames } from '@console/components/ui/classNames';
 import { useAgentStore } from '@console/store/agentStore';
 import type { AgentEvent, CitationRecord } from '@console/types/agent';
 
-interface KnowledgeChunk {
+export interface KnowledgeChunk {
   id: string;
   source: string;
   content: string;
@@ -28,7 +28,7 @@ interface KnowledgeChunk {
   matchedKeywords?: string[];
 }
 
-interface RetrievalRun {
+export interface RetrievalRun {
   id: string;
   query: string;
   timestamp: number;
@@ -479,7 +479,9 @@ interface SourceSummary {
   updatedAt?: string;
 }
 
-function buildRetrievalRuns(events: AgentEvent[]): RetrievalRun[] {
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildRetrievalRuns(events: AgentEvent[]): RetrievalRun[] {
   const ragRuns = events
     .filter((event) => event.type === 'rag_retrieve')
     .map((event) => {
@@ -502,7 +504,12 @@ function buildRetrievalRuns(events: AgentEvent[]): RetrievalRun[] {
   return ragRuns.reverse();
 }
 
-function buildKnowledgeChunks(citations: CitationRecord[], events: AgentEvent[]): KnowledgeChunk[] {
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildKnowledgeChunks(
+  citations: CitationRecord[],
+  events: AgentEvent[],
+): KnowledgeChunk[] {
   const fromRagEvents = events.flatMap((event) => {
     if (event.type !== 'rag_retrieve') return [];
     const payload = event.payload as {
@@ -554,7 +561,9 @@ function buildKnowledgeChunks(citations: CitationRecord[], events: AgentEvent[])
   }));
 }
 
-function buildSourceSummaries(chunks: KnowledgeChunk[]): SourceSummary[] {
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildSourceSummaries(chunks: KnowledgeChunk[]): SourceSummary[] {
   const map = new Map<string, SourceSummary>();
   chunks.forEach((chunk) => {
     const current = map.get(chunk.source) ?? {
@@ -573,7 +582,13 @@ function buildSourceSummaries(chunks: KnowledgeChunk[]): SourceSummary[] {
   return Array.from(map.values()).sort((a, b) => b.maxScore - a.maxScore);
 }
 
-function filterChunks(chunks: KnowledgeChunk[], query: string, sourceFilter: string): KnowledgeChunk[] {
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function filterChunks(
+  chunks: KnowledgeChunk[],
+  query: string,
+  sourceFilter: string,
+): KnowledgeChunk[] {
   const normalizedQuery = query.trim().toLowerCase();
   return chunks.filter((chunk) => {
     const sourceMatch = sourceFilter === 'all' || chunk.source === sourceFilter;

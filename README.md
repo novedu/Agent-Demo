@@ -188,10 +188,22 @@ Start the React Console in another terminal:
 npm --prefix apps/agent-console run dev
 ```
 
+Or start both processes with one command:
+
+```bash
+npm run dev:all
+```
+
 Open:
 
 ```text
 http://127.0.0.1:5173/agent
+```
+
+The Runtime Server health endpoint is:
+
+```text
+http://127.0.0.1:3001/health
 ```
 
 Frontend environment:
@@ -238,6 +250,8 @@ npm run build
 ```
 
 Note: in restricted sandbox environments, `tsx` and Vite may fail with local IPC or port-listening errors such as `listen EPERM ... tsx-501/*.pipe`. Run the same commands in a normal local terminal for final verification.
+
+The test suite covers RuntimeObject projection, SSE event projection, Knowledge and Memory derived views, Timeline modeling, Inspector rendering, and the Runtime Server health endpoint.
 
 ## What Is Real Today
 

@@ -14,7 +14,7 @@ import { classNames } from '@console/components/ui/classNames';
 import { useAgentStore } from '@console/store/agentStore';
 import type { AgentEvent, MemoryRecord, Message } from '@console/types/agent';
 
-interface MemoryEntry extends MemoryRecord {
+export interface MemoryEntry extends MemoryRecord {
   taskId?: string;
   eventId?: string;
   eventTimestamp?: number;
@@ -22,7 +22,7 @@ interface MemoryEntry extends MemoryRecord {
   relatedMessage?: Message;
 }
 
-interface MemoryWrite {
+export interface MemoryWrite {
   id: string;
   taskId?: string;
   timestamp: number;
@@ -31,7 +31,7 @@ interface MemoryWrite {
   items: MemoryEntry[];
 }
 
-interface MemoryGroupSummary {
+export interface MemoryGroupSummary {
   type: MemoryRecord['type'];
   label: string;
   description: string;
@@ -516,7 +516,9 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function buildMemoryEntries(
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildMemoryEntries(
   memory: MemoryRecord[],
   events: AgentEvent[],
   messages: Message[],
@@ -544,7 +546,9 @@ function buildMemoryEntries(
   return dedupeMemory(entries).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-function buildMemoryWrites(events: AgentEvent[], messages: Message[]): MemoryWrite[] {
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildMemoryWrites(events: AgentEvent[], messages: Message[]): MemoryWrite[] {
   return events
     .filter((event) => event.type === 'memory_update')
     .map((event) => {
@@ -571,7 +575,9 @@ function buildMemoryWrites(events: AgentEvent[], messages: Message[]): MemoryWri
     .reverse();
 }
 
-function buildGroupSummaries(entries: MemoryEntry[]): MemoryGroupSummary[] {
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildGroupSummaries(entries: MemoryEntry[]): MemoryGroupSummary[] {
   return memoryTypes.map((type) => {
     const items = entries.filter((entry) => entry.type === type.type);
     return {
@@ -591,7 +597,9 @@ function buildGroupSummaries(entries: MemoryEntry[]): MemoryGroupSummary[] {
   });
 }
 
-function filterEntries(
+// This pure adapter is exported for focused data-projection tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function filterEntries(
   entries: MemoryEntry[],
   query: string,
   typeFilter: MemoryRecord['type'] | 'all',

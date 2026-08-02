@@ -9,11 +9,12 @@
     "packages/*"
   ],
   "scripts": {
+    "dev:all": "node scripts/dev-all.mjs",
     "server": "tsx apps/runtime-server/src/index.ts",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && npm --prefix apps/agent-console run build",
     "lint": "npm --prefix apps/agent-console run lint",
-    "test": "tsx packages/agent-runtime/src/tool/security/reliability-test.ts && npm --prefix apps/agent-console run test"
+    "test": "tsx packages/agent-runtime/src/tool/security/reliability-test.ts && tsx apps/runtime-server/src/health-test.ts && npm --prefix apps/agent-console run test"
   },
   "keywords": [],
   "author": "",

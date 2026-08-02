@@ -1,13 +1,6 @@
 import { createElement } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { AgentConsole } from '../features/agent-console/AgentConsole';
 import { StudioLayout } from '../layout/StudioLayout';
-import { Dashboard } from '../pages/Dashboard';
-import { Evaluation } from '../pages/Evaluation';
-import { Knowledge } from '../pages/Knowledge';
-import { Memory } from '../pages/Memory';
-import { Settings } from '../pages/Settings';
-import { Workflow } from '../pages/Workflow';
 
 export const router = createBrowserRouter([
   {
@@ -20,31 +13,52 @@ export const router = createBrowserRouter([
       },
       {
         path: 'dashboard',
-        element: createElement(Dashboard),
+        lazy: async () => {
+          const { Dashboard } = await import('../pages/Dashboard');
+          return { Component: Dashboard };
+        },
       },
       {
         path: 'agent',
-        element: createElement(AgentConsole),
+        lazy: async () => {
+          const { AgentConsole } = await import('../features/agent-console/AgentConsole');
+          return { Component: AgentConsole };
+        },
       },
       {
         path: 'workflow',
-        element: createElement(Workflow),
+        lazy: async () => {
+          const { Workflow } = await import('../pages/Workflow');
+          return { Component: Workflow };
+        },
       },
       {
         path: 'knowledge',
-        element: createElement(Knowledge),
+        lazy: async () => {
+          const { Knowledge } = await import('../pages/Knowledge');
+          return { Component: Knowledge };
+        },
       },
       {
         path: 'memory',
-        element: createElement(Memory),
+        lazy: async () => {
+          const { Memory } = await import('../pages/Memory');
+          return { Component: Memory };
+        },
       },
       {
         path: 'evaluation',
-        element: createElement(Evaluation),
+        lazy: async () => {
+          const { Evaluation } = await import('../pages/Evaluation');
+          return { Component: Evaluation };
+        },
       },
       {
         path: 'settings',
-        element: createElement(Settings),
+        lazy: async () => {
+          const { Settings } = await import('../pages/Settings');
+          return { Component: Settings };
+        },
       },
     ],
   },

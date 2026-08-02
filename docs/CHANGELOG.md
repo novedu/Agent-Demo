@@ -164,6 +164,22 @@ Implemented:
 - Added `docs/PORTFOLIO_REVIEW.md` for portfolio framing, strengths, likely reviewer questions, and honest maturity assessment.
 - Clarified that Agent Studio is a portfolio-grade Enterprise Agent Runtime Studio MVP, not a fully production-ready enterprise AI platform.
 
+## Milestone 3: Engineering Quality
+
+Status: implemented.
+
+Implemented:
+
+- Added focused tests for RuntimeObject relationships and lifecycle projection.
+- Added Event Projection coverage for RAG citations, memory updates, tool failure, and retry state.
+- Added Knowledge and Memory derived-view tests.
+- Added Timeline execution-model tests for retry recovery, status, and progress.
+- Added server-rendered Runtime Inspector coverage for object-specific sections.
+- Added `GET /health` verification and Settings connectivity detection.
+- Added `npm run dev:all` with graceful shutdown for the Runtime Server and React Console.
+- Added route-level code splitting to remove the initial Vite chunk warning.
+- Added root `CHANGELOG.md`, `CONTRIBUTING.md`, and `LICENSE` entry points.
+
 ## Agent Studio 2.1
 
 Planned:

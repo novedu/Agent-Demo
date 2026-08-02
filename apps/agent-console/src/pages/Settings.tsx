@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Badge,
@@ -14,13 +15,20 @@ import {
   getRuntimeEnvironmentLabel,
   getRuntimeModelLabel,
 } from '@console/features/agent-console/runtime-overview';
-import { getAgentServerURL } from '@console/services/agent';
+import { checkAgentServerHealth, getAgentServerURL } from '@console/services/agent';
 import { useAgentStore } from '@console/store/agentStore';
 
 interface ReadinessItem {
   label: string;
   status: 'available' | 'partial' | 'planned';
   description: string;
+}
+
+interface RuntimeHealthState {
+  status: 'checking' | 'healthy' | 'unhealthy' | 'unavailable';
+  latencyMs?: number;
+  checkedAt?: number;
+  message?: string;
 }
 
 const sseEvents = [
@@ -104,6 +112,37 @@ export function Settings() {
   const serverUrl = getSafeAgentServerURL();
   const envLabel = getRuntimeEnvironmentLabel();
   const modelLabel = getRuntimeModelLabel();
+  const [health, setHealth] = useState<RuntimeHealthState>({ status: 'checking' });
+  const refreshHealth = useCallback(async () => {
+    if (serverUrl === 'not configured') {
+      setHealth({ status: 'unavailable', message: 'VITE_AGENT_SERVER_URL is not configured.' });
+      return;
+    }
+
+    setHealth({ status: 'checking' });
+    const startedAt = performance.now();
+
+    try {
+      const response = await checkAgentServerHealth();
+      setHealth({
+        status: response.status === 'ok' ? 'healthy' : 'unhealthy',
+        latencyMs: Math.round(performance.now() - startedAt),
+        checkedAt: Date.now(),
+        message: response.status === 'ok' ? undefined : `Unexpected status: ${response.status}`,
+      });
+    } catch (error) {
+      setHealth({
+        status: 'unhealthy',
+        latencyMs: Math.round(performance.now() - startedAt),
+        checkedAt: Date.now(),
+        message: error instanceof Error ? error.message : 'Health check failed.',
+      });
+    }
+  }, [serverUrl]);
+
+  useEffect(() => {
+    void refreshHealth();
+  }, [refreshHealth]);
 
   return (
     <section className="h-full overflow-y-auto bg-[var(--studio-bg)]">
@@ -115,6 +154,11 @@ export function Settings() {
           serverUrl={serverUrl}
           envLabel={envLabel}
           modelLabel={modelLabel}
+        />
+        <RuntimeHealthPanel
+          health={health}
+          serverUrl={serverUrl}
+          onRefresh={() => void refreshHealth()}
         />
 
         <div className="grid min-h-[690px] min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -143,6 +187,64 @@ export function Settings() {
         <SecurityBoundaryPanel />
       </div>
     </section>
+  );
+}
+
+function RuntimeHealthPanel({
+  health,
+  serverUrl,
+  onRefresh,
+}: {
+  health: RuntimeHealthState;
+  serverUrl: string;
+  onRefresh: () => void;
+}) {
+  const tone =
+    health.status === 'healthy'
+      ? 'success'
+      : health.status === 'unhealthy'
+        ? 'danger'
+        : health.status === 'checking'
+          ? 'info'
+          : 'neutral';
+
+  return (
+    <Panel
+      title="Runtime Health"
+      description="Live connectivity check against the Agent Server"
+      actions={
+        <Button size="sm" variant="secondary" onClick={onRefresh} disabled={health.status === 'checking'}>
+          {health.status === 'checking' ? 'Checking' : 'Check again'}
+        </Button>
+      }
+      bodyClassName="p-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Badge tone={tone}>{health.status}</Badge>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-ink">
+              {health.status === 'healthy'
+                ? 'Agent Server is reachable'
+                : health.status === 'checking'
+                  ? 'Checking Agent Server'
+                  : health.status === 'unavailable'
+                    ? 'Agent Server is not configured'
+                    : 'Agent Server is unavailable'}
+            </div>
+            <div className="mt-1 truncate font-mono text-[10px] text-muted">
+              {health.message ?? `${serverUrl}/health`}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 font-mono text-[10px] text-muted">
+          <span>latency {health.latencyMs === undefined ? '-' : `${health.latencyMs}ms`}</span>
+          <span>
+            checked {health.checkedAt ? new Date(health.checkedAt).toLocaleTimeString() : '-'}
+          </span>
+        </div>
+      </div>
+    </Panel>
   );
 }
 

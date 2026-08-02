@@ -95,6 +95,20 @@ For TypeScript-only checks:
 npm run typecheck
 ```
 
+For local full-stack development:
+
+```bash
+npm run dev:all
+```
+
+For the engineering quality milestone, tests must cover:
+
+- RuntimeObject lifecycle, span, parent, and dependency projection
+- Agent event projection into Knowledge, Memory, Timeline, and task state
+- Knowledge and Memory derived views
+- Runtime Inspector object-specific rendering
+- Runtime Server `/health`
+
 ## UI Review Checklist
 
 - Can the user understand what the agent is doing within 3 seconds?

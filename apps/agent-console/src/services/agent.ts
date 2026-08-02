@@ -5,6 +5,10 @@ export interface CreateAgentTaskResponse {
   status: string;
 }
 
+export interface AgentHealthResponse {
+  status: string;
+}
+
 export type AgentTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface AgentTaskStatusResponse {
@@ -76,6 +80,19 @@ export async function createAgentTask(input: string): Promise<CreateAgentTaskRes
   }
 
   return response.json() as Promise<CreateAgentTaskResponse>;
+}
+
+export async function checkAgentServerHealth(): Promise<AgentHealthResponse> {
+  const response = await fetch(`${getAgentServerURL()}/health`, {
+    method: 'GET',
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Agent Server health check failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<AgentHealthResponse>;
 }
 
 export async function cancelAgentTask(taskId: string): Promise<void> {
