@@ -15,9 +15,11 @@ interface ChatPanelProps {
   onStop?: () => void;
   onRegenerate?: () => void;
   onCitationFocus?: (citationId?: string) => void;
+  onRuntimeObjectSelect?: (object: RuntimeObject) => void;
   highlightedMessageId?: string;
   hasTaskActivity?: boolean;
   onStartTask?: (input?: string) => void;
+  onStartRetryDemo?: () => void;
   runtimeOverview: RuntimeOverview;
   runtimeObjects: RuntimeObject[];
 }
@@ -31,9 +33,11 @@ export function ChatPanel({
   onStop,
   onRegenerate,
   onCitationFocus,
+  onRuntimeObjectSelect,
   highlightedMessageId,
   hasTaskActivity,
   onStartTask,
+  onStartRetryDemo,
   runtimeOverview,
   runtimeObjects,
 }: ChatPanelProps) {
@@ -91,6 +95,7 @@ export function ChatPanel({
           <RuntimePreview
             messages={messages}
             onStartTask={onStartTask}
+            onStartRetryDemo={onStartRetryDemo}
             runtimeOverview={runtimeOverview}
           />
         ) : (
@@ -107,6 +112,7 @@ export function ChatPanel({
                   isStreaming={isStreaming && message.id === lastMessageId}
                   highlighted={message.id === highlightedMessageId}
                   onCitationFocus={onCitationFocus}
+                  onRuntimeObjectSelect={onRuntimeObjectSelect}
                   runtimeOverview={runtimeOverview}
                   runtimeObjects={runtimeObjects}
                 />
@@ -141,56 +147,62 @@ export function ChatPanel({
 
 const suggestions = [
   {
-    title: 'Sales decline demo',
-    detail: 'Planner + sales tools + RAG + evaluation',
-    input: '分析华东销售下降原因，并生成报告',
+    title: 'Full runtime demo',
+    detail: 'Planner + Tool + RAG + Memory + Reflection + Evaluation',
+    input: '分析华东区域销售下降原因，并生成报告',
   },
   {
-    title: 'RAG QA',
-    detail: 'Retrieve knowledge and answer with evidence',
-    input: '检索知识库，解释华东销售下降可能原因',
-  },
-  {
-    title: 'Memory run',
-    detail: 'Use memory context and save task summary',
-    input: '我主要关注销售分析，请帮我分析华东区域销售下降原因',
+    title: 'Failure recovery demo',
+    detail: 'Tool Error -> Retry -> Reflection -> Success',
+    input: 'retry-demo',
   },
 ] as const;
 
 function RuntimePreview({
   messages,
   onStartTask,
+  onStartRetryDemo,
   runtimeOverview,
 }: {
   messages: ConsoleMessage[];
   onStartTask?: (input?: string) => void;
+  onStartRetryDemo?: () => void;
   runtimeOverview: RuntimeOverview;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto p-4">
-      <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+      <div className="rounded-xl border border-slate-200 bg-slate-950 p-4 text-white">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-700">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-blue-200">
               <SparkIcon className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-sm font-semibold text-ink">
-                Ready for an industry demo run
+              <h2 className="truncate text-sm font-semibold text-white">
+                Runtime Console armed
               </h2>
-              <p className="mt-0.5 truncate text-xs text-muted">
-                {'Planner -> Tool -> Knowledge -> Memory -> Reflection -> Evaluation -> Answer.'}
+              <p className="mt-0.5 truncate text-xs text-slate-300">
+                {'Watch Planner -> Tool -> Knowledge -> Memory -> Reflection -> Evaluation -> Answer.'}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onStartTask?.('分析华东销售下降原因，并生成报告')}
-            className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-accent bg-accent px-3 text-[10px] font-semibold text-white transition-colors duration-200 hover:bg-blue-700"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            Run demo
-          </button>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => onStartTask?.('分析华东区域销售下降原因，并生成报告')}
+              className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-blue-400 bg-blue-500 px-3 text-[10px] font-semibold text-white transition-colors duration-200 hover:bg-blue-600"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              Run full demo
+            </button>
+            <button
+              type="button"
+              onClick={onStartRetryDemo}
+              className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-amber-300/50 bg-amber-400/10 px-3 text-[10px] font-semibold text-amber-100 transition-colors duration-200 hover:bg-amber-400/20"
+            >
+              {'Failure -> Retry'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -221,14 +233,20 @@ function RuntimePreview({
 
       <div className="mt-auto pt-4">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-          Run a complete runtime path
+          Runtime demo paths
         </div>
-        <div className="grid gap-2 md:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-2">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.title}
               type="button"
-              onClick={() => onStartTask?.(suggestion.input)}
+              onClick={() => {
+                if (suggestion.input === 'retry-demo') {
+                  onStartRetryDemo?.();
+                  return;
+                }
+                onStartTask?.(suggestion.input);
+              }}
               className="cursor-pointer rounded-lg border border-line bg-white p-3 text-left transition-colors duration-200 hover:border-blue-200 hover:bg-blue-50/50"
             >
               <span className="block text-xs font-semibold text-ink">{suggestion.title}</span>

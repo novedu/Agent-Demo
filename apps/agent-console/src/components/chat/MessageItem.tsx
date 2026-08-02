@@ -11,6 +11,7 @@ interface MessageItemProps {
   isStreaming?: boolean;
   highlighted?: boolean;
   onCitationFocus?: (citationId?: string) => void;
+  onRuntimeObjectSelect?: (object: RuntimeObject) => void;
   runtimeOverview?: RuntimeOverview;
   runtimeObjects?: RuntimeObject[];
 }
@@ -20,6 +21,7 @@ export function MessageItem({
   isStreaming = false,
   highlighted = false,
   onCitationFocus,
+  onRuntimeObjectSelect,
   runtimeOverview,
   runtimeObjects = [],
 }: MessageItemProps) {
@@ -47,6 +49,7 @@ export function MessageItem({
             evidenceOpen={evidenceOpen}
             runtimeOverview={runtimeOverview}
             runtimeObjects={runtimeObjects}
+            onRuntimeObjectSelect={onRuntimeObjectSelect}
             onEvidenceToggle={() => {
               setEvidenceOpen((value) => !value);
               onCitationFocus?.();
@@ -136,12 +139,14 @@ function AssistantRuntimeSummary({
   runtimeOverview,
   runtimeObjects,
   onEvidenceToggle,
+  onRuntimeObjectSelect,
 }: {
   message: ConsoleMessage;
   evidenceOpen: boolean;
   runtimeOverview?: RuntimeOverview;
   runtimeObjects: RuntimeObject[];
   onEvidenceToggle: () => void;
+  onRuntimeObjectSelect?: (object: RuntimeObject) => void;
 }) {
   const signals = runtimeOverview?.availableSignals ?? [];
   const segments = buildRuntimeSegments(runtimeObjects);
@@ -165,7 +170,11 @@ function AssistantRuntimeSummary({
       {segments.length > 0 && (
         <div className="mt-3 grid gap-1.5">
           {segments.map((segment) => (
-            <RuntimeSegment key={segment.id} segment={segment} />
+            <RuntimeSegment
+              key={segment.id}
+              segment={segment}
+              onSelect={getRuntimeObjectSelectHandler(segment.object, onRuntimeObjectSelect)}
+            />
           ))}
         </div>
       )}
@@ -188,11 +197,20 @@ interface RuntimeSegmentModel {
   detail: string;
   status: RuntimeObject['status'];
   tone: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+  object?: RuntimeObject;
 }
 
-function RuntimeSegment({ segment }: { segment: RuntimeSegmentModel }) {
+function RuntimeSegment({ segment, onSelect }: { segment: RuntimeSegmentModel; onSelect?: () => void }) {
+  const Wrapper = onSelect ? 'button' : 'div';
   return (
-    <div className="grid grid-cols-[72px_minmax(0,1fr)_72px] items-center gap-2 rounded-md border border-line bg-white px-2 py-1.5">
+    <Wrapper
+      type={onSelect ? 'button' : undefined}
+      onClick={onSelect}
+      className={classNames(
+        'grid w-full grid-cols-[72px_minmax(0,1fr)_72px] items-center gap-2 rounded-md border border-line bg-white px-2 py-1.5 text-left transition-colors duration-200',
+        onSelect && 'cursor-pointer hover:border-blue-200 hover:bg-blue-50/50',
+      )}
+    >
       <Badge tone={segment.tone} className="justify-center px-1.5 py-0.5 text-[9px]">
         {segment.label}
       </Badge>
@@ -201,7 +219,7 @@ function RuntimeSegment({ segment }: { segment: RuntimeSegmentModel }) {
         <div className="truncate text-[10px] text-muted">{segment.detail}</div>
       </div>
       <span className="justify-self-end font-mono text-[10px] text-muted">{segment.status}</span>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -232,6 +250,7 @@ function createSegment(
     detail: object.summary,
     status: object.status,
     tone: getSegmentTone(object.status, object.type),
+    object,
   };
 }
 
@@ -320,4 +339,12 @@ function formatEvidenceSummary(runtimeOverview?: RuntimeOverview): string {
       ? 'evaluation pending'
       : `evaluation ${Math.round(runtimeOverview.evaluationScore * 100)}%`,
   ].join(' · ');
+}
+
+function getRuntimeObjectSelectHandler(
+  object: RuntimeObject | undefined,
+  onRuntimeObjectSelect?: (selected: RuntimeObject) => void,
+): (() => void) | undefined {
+  if (!object || !onRuntimeObjectSelect) return undefined;
+  return () => onRuntimeObjectSelect(object);
 }

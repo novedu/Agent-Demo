@@ -371,6 +371,7 @@ function EmptyFlow({ onStart }: { onStart?: () => void }) {
     { label: 'Knowledge', status: 'pending' },
     { label: 'Memory', status: 'pending' },
     { label: 'Reflection', status: 'pending' },
+    { label: 'Evaluation', status: 'pending' },
     { label: 'Answer', status: 'pending' },
   ];
 

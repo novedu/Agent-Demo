@@ -2,9 +2,10 @@ import { Panel } from '../ui';
 
 interface ExecutionGraphEmptyStateProps {
   onStart: () => void;
+  onStartRetryDemo?: () => void;
 }
 
-export function ExecutionGraphEmptyState({ onStart }: ExecutionGraphEmptyStateProps) {
+export function ExecutionGraphEmptyState({ onStart, onStartRetryDemo }: ExecutionGraphEmptyStateProps) {
   const nodes = [
     { label: 'Planner', detail: 'plan', color: 'border-blue-200 bg-blue-50 text-blue-700' },
     { label: 'Tool', detail: 'execute', color: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
@@ -30,7 +31,7 @@ export function ExecutionGraphEmptyState({ onStart }: ExecutionGraphEmptyStatePr
           <svg viewBox="0 0 10 10" className="h-2 w-2" fill="currentColor">
             <path d="M2 1l6 4-6 4z" />
           </svg>
-          Run
+          Run full demo
         </button>
       }
     >
@@ -72,15 +73,26 @@ export function ExecutionGraphEmptyState({ onStart }: ExecutionGraphEmptyStatePr
 
         <div className="grid gap-2 text-[10px] leading-4 text-muted md:grid-cols-3">
           <div className="rounded-md border border-line bg-panel px-2 py-1.5">
-            Chat streams the answer and runtime summary.
+            Chat streams the answer and runtime evidence.
           </div>
           <div className="rounded-md border border-line bg-panel px-2 py-1.5">
-            Timeline appends spans as Server-Sent Events arrive.
+            Timeline appends spans as runtime events arrive.
           </div>
           <div className="rounded-md border border-line bg-panel px-2 py-1.5">
-            Inspector follows the selected runtime object.
+            Drawer, Inspector, Graph and Chat share selection.
           </div>
         </div>
+
+        {onStartRetryDemo && (
+          <button
+            type="button"
+            onClick={onStartRetryDemo}
+            className="inline-flex h-8 w-fit cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 text-[10px] font-semibold text-amber-700 transition-colors duration-200 hover:bg-amber-100"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {'Run Tool Error -> Retry -> Success'}
+          </button>
+        )}
       </div>
     </Panel>
   );

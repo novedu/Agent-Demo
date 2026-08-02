@@ -196,7 +196,7 @@ function buildWorkflowNode(input: ExecutionModelInput): ExecutionNodeRecord {
     input: input.plan,
     output: input.workflow,
     metadata: { eventCount: input.workflow.length },
-    trace: getEventsByTypes(input.events, ['workflow_start', 'state_update', 'task_complete']),
+    trace: getEventsByTypes(input.events, ['workflow_start', 'state_update', 'task_retry', 'task_complete']),
   };
 }
 
@@ -241,21 +241,30 @@ function buildToolNode(
     (event) => event.type === 'tool_error' && getToolName(event) === toolName,
   );
   const endEvent = successEvent ?? errorEvent;
+  const retryEvent = input.events.find((event) => event.type === 'task_retry');
+  const status = toExplorerStatus(tool?.status ?? planStatus);
 
   return {
     id: `tool:${id}`,
     kind: 'tool',
     component: toolName,
     summary,
-    status: toExplorerStatus(tool?.status ?? planStatus),
+    status,
     duration: tool?.duration ?? getDuration(startEvent?.timestamp, endEvent?.timestamp),
     startTime: startEvent?.timestamp,
     endTime: endEvent?.timestamp,
     input: startEvent?.payload,
     output: tool?.result ?? successEvent?.payload ?? errorEvent?.payload,
     arguments: tool?.args ?? planArgs,
-    metadata: { toolName },
-    trace: [startEvent, successEvent, errorEvent].filter(Boolean),
+    metadata: {
+      toolName,
+      hadError: Boolean(errorEvent),
+      recoveredByRetry: Boolean(errorEvent && retryEvent && status === 'success'),
+      retryEventId: retryEvent?.id,
+      retryCount: readRetryCount(retryEvent?.payload),
+      error: readErrorMessage(errorEvent?.payload),
+    },
+    trace: [startEvent, errorEvent, retryEvent, successEvent].filter(Boolean),
   };
 }
 
@@ -404,4 +413,18 @@ function getPayloadStatus(payload: unknown): string | undefined {
   if (!payload || typeof payload !== 'object') return undefined;
   const status = (payload as { status?: unknown }).status;
   return typeof status === 'string' ? status : undefined;
+}
+
+function readErrorMessage(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const error = (payload as { error?: unknown }).error;
+  if (!error || typeof error !== 'object') return undefined;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' ? message : undefined;
+}
+
+function readRetryCount(payload: unknown): number | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const retryCount = (payload as { retryCount?: unknown }).retryCount;
+  return typeof retryCount === 'number' ? retryCount : undefined;
 }
